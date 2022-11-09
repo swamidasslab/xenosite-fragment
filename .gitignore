@@ -1,0 +1,5 @@
+.direnv
+./.direnv
+.env
+__pycache__
+*.pyc
