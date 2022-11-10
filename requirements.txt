@@ -1,4 +1,5 @@
 numba
 numpy
 data-science-types
+pydantic
 rdkit
