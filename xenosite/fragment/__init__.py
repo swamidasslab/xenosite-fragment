@@ -4,14 +4,15 @@ Library for processing molecule fragments.
 
 Create a fragment from a SMILES or a fragment SMILES string:
 
->>> from xenosite.fragment import Fragment
+>>> str(Fragment("CCCC")) # Valid smiles
+'C-C-C-C'
+
 >>> str(Fragment("ccCC")) # not a valid SMILES
 'c:c-C-C'
 
 Optionally, create a fragment of a molecule from a string and (optionally) a list of nodes
 in the fragment. If IDs are provided, they MUST select a connected fragment.
 
->>> from xenosite.fragment import Fragment
 >>> F = Fragment("CCCCCCOc1ccccc1", [0,1,2,3,4,5])
 >>> str(F)  # hexane
 'C-C-C-C-C-C'
@@ -63,7 +64,6 @@ and *prevents* rings from matching unclosed ring patterns:
 Efficiently create multiple fragments by reusing a
 precomputed graph:
 
->>> from xenosite.fragment import Graph
 >>> import rdkit
 >>>
 >>> mol = rdkit.Chem.MolFromSmiles("c1ccccc1OCCC")
