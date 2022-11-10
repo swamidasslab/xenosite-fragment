@@ -38,12 +38,18 @@ def smiles_serialize(
     # look up for edge labels
     L = {((i, j) if i < j else (j, i)): l for i, j, l in zip(edge[0], edge[1], elabel)}
 
+    if not dfs:
+        raise ValueError(
+            "Multiple components in graph are not allowed."
+        )
+
     # output ordered nodes
     ordered_nodes = [dfs[0][0]] + [j for _, j, t in dfs if t != graph.DFS_TYPE.RING]
 
+    
     if len(ordered_nodes) != n:
-        ValueError(
-            "serlialize: DFS does not cover whole molecule. Multiple components in graph are not allowed."
+        raise ValueError(
+            "Multiple components in graph are not allowed."
         )
 
     # collect DFS info for all nodes

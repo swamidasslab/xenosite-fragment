@@ -11,19 +11,30 @@ Create a fragment from a SMILES or a fragment SMILES string:
 'c:c-C-C'
 
 Optionally, create a fragment of a molecule from a string and (optionally) a list of nodes
-in the fragment. If IDs are provided, they MUST select a connected fragment.
+in the fragment. 
 
 >>> F = Fragment("CCCCCCOc1ccccc1", [0,1,2,3,4,5])
 >>> str(F)  # hexane
 'C-C-C-C-C-C'
 
+If IDs are provided, they MUST select a connected fragment.
+
+>>> F = Fragment("CCCCCCOc1ccccc1", [0,10]) 
+Traceback (most recent call last):
+  ...
+ValueError: Multiple components in graph are not allowed.
+
 Get the canonical representation of a fragment:
 
+>>> Fragment("O-C").canonical().string
+'C-O'
 >>> Fragment("OC").canonical().string
+'C-O'
+>>> Fragment("CO").canonical().string
 'C-O'
 
 Get the reordering of nodes used to create the canonical
-string representaiton. If remap=True, then the ID are remapped to the input
+string representation. If remap=True, then the ID are remapped to the input
 representation used to initalize the Fragment.
 
 >>> Fragment("COC", [1,2]).canonical(remap=True).reordering
