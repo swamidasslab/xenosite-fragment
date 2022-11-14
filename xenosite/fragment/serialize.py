@@ -17,12 +17,19 @@ class SERIAL(Enum):
 
 
 def serialize(G: "graph.Graph", canonize=True) -> Serialized:
+    if G.nlabel is None:
+        raise ValueError("Need node labels.")
+    if G.elabel is None:
+        print(G)
+        raise ValueError("Need edge labels.")
+
     dfs = graph.dfs_ordered(G, canonize)
-    return smiles_serialize(dfs, **G.dict())  # type: ignore
+
+    return smiles_serialize(dfs, G.n, G.nlabel, G.elabel, G.edge)
 
 
 def smiles_serialize(
-    dfs: list[tuple[int, int, "graph.DFS_TYPE"]],
+    dfs: list["graph.DFS_EDGE"],
     n: int,
     nlabel: list[str],
     elabel: list[str],
@@ -39,18 +46,13 @@ def smiles_serialize(
     L = {((i, j) if i < j else (j, i)): l for i, j, l in zip(edge[0], edge[1], elabel)}
 
     if not dfs:
-        raise ValueError(
-            "Multiple components in graph are not allowed."
-        )
+        raise ValueError("Multiple components in graph are not allowed.")
 
     # output ordered nodes
     ordered_nodes = [dfs[0][0]] + [j for _, j, t in dfs if t != graph.DFS_TYPE.RING]
 
-    
     if len(ordered_nodes) != n:
-        raise ValueError(
-            "Multiple components in graph are not allowed."
-        )
+        raise ValueError("Multiple components in graph are not allowed.")
 
     # collect DFS info for all nodes
     node_info = {}

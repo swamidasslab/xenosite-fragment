@@ -1,4 +1,3 @@
-
 """
 Library for processing molecule fragments. 
 
@@ -90,10 +89,9 @@ Find matches to fragments:
 
 >>> list(f2.matches(mol))
 [(6, 5, 4), (6, 5, 0)]
-"""    
+"""
 
 
 from .graph import Graph
 from .chem import Fragment, MolToSmartsGraph
 from ._version import __version__
-

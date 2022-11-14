@@ -1,38 +1,38 @@
-from pydantic import BaseModel
-from typing import Union, NamedTuple, Optional
+from typing import Union, NamedTuple, Optional, Sequence
 from enum import Enum
 from .morgan import morgan
 from . import serialize
 import numpy as np
 
 
-class TypedArray(np.ndarray):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate_type
+class Graph:
+    def __init__(
+        self,
+        n: int,
+        edge: tuple[Sequence[np.int64], Sequence[np.int64]],
+        nlabel: Optional[list[str]] = None,
+        elabel: Optional[list[str]] = None,
+    ):
 
-    @classmethod
-    def validate_type(cls, val):
-        return np.asarray(val, dtype=cls.inner_type)  # type: ignore
+        self.n = n
+        self.edge: tuple[np.ndarray[np.int64], np.ndarray[np.int64]] = (
+            np.asarray(edge[1], dtype=np.int64),  # type: ignore
+            np.asarray(edge[0], dtype=np.int64),  # type: ignore
+        )
+        self.nlabel = nlabel
+        self.elabel = elabel
 
+    def __repr__(self):
+        return f"Graph(n={self.n},\n\tedge={self.edge},\n\tnlabel={self.nlabel},\n\telabel={self.elabel})"
 
-class ArrayMeta(type):
-    def __getitem__(self, t):
-        return type("Array", (TypedArray,), {"inner_type": t})
+    def edge_to_node(self) -> "Graph":
+        if self.nlabel and not self.elabel:
+            raise ValueError("edge_to_node: edge labels missing.")
 
+        if self.elabel and not self.nlabel:
+            raise ValueError("edge_to_node: node labels missing.")
 
-class Array(np.ndarray, metaclass=ArrayMeta):
-    @classmethod
-    def validate_type(cls, val):
-        return np.asarray(val)  # type: ignore
-
-
-class UDG(BaseModel):
-    n: int
-    edge: tuple[Array[np.int64], Array[np.int64]]
-
-    def edge_to_node(self) -> "UDG":
-        n = self.n + len(self.edge[0])
+        nlabel = self.nlabel + self.elabel if self.nlabel and self.elabel else []
 
         e1 = self.edge[0]
         e2 = self.edge[1]
@@ -43,12 +43,7 @@ class UDG(BaseModel):
         e1 = np.concatenate([e1.ravel(), e2.ravel()])
         e2 = np.concatenate([eid, eid])
 
-        return UDG(n=n, edge=(e1, e2))  # type: ignore
-
-
-class Graph(UDG):
-    nlabel: list[str]
-    elabel: Optional[list[str]] = None
+        return Graph(n=self.n + ne, edge=(e1, e2), nlabel=nlabel)  # type: ignore
 
     def morgan(self) -> np.ndarray[np.int64]:
         if self.elabel:
@@ -59,24 +54,15 @@ class Graph(UDG):
 
         return morgan(self.nlabel, e1, e2)  # type: ignore
 
-    def edge_to_node(self) -> "Graph":
-        if not self.elabel:
-            raise ValueError("edge_to_node: edge labels missing.")
-        nlabel = self.nlabel + self.elabel
-
-        S = super().edge_to_node().dict()
-
-        return Graph(nlabel=nlabel, **S)
-
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
 
-    def subgraph(self, nidx: list[int], eidx: Optional[list[int]] = None) -> "Graph":  # type: ignore
+    def subgraph(self, nidx: list[int], eidx: Optional[list[int]] = None) -> "Graph":
         ns = set(nidx)
         assert len(nidx) == len(ns)
 
         n = len(ns)
-        nlabel = [self.nlabel[i] for i in nidx]
+        nlabel = [self.nlabel[i] for i in nidx] if self.nlabel else None
 
         eidx = eidx or [
             e for e, (i, j) in enumerate(zip(*self.edge)) if i in ns and j in ns
@@ -158,7 +144,7 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
     return _dfs(start, N)
 
 
-def neighbors(G: UDG) -> dict[int, list[int]]:
+def neighbors(G: Graph) -> dict[int, list[int]]:
     N = {n: [] for n in range(G.n)}
 
     for i, j in zip(G.edge[0], G.edge[1]):

@@ -1,15 +1,11 @@
 import numpy as np
 import numba
-import os
-import warnings
-
-
-from numba import jit
+from numba import jit, njit
 
 from typing import Iterator, Sequence
 
 
-@jit(cache=True)
+@njit(cache=True)
 def to_primes(x) -> numba.int64[:]:  # type: ignore
     u = np.unique(x)
     u = sorted(u)
@@ -18,7 +14,7 @@ def to_primes(x) -> numba.int64[:]:  # type: ignore
     return np.array([p[d[v]] for v in x]), len(u)
 
 
-@jit(cache=True)
+@njit(cache=True)
 def nself_prod(
     v: numba.int64[:], e1: numba.int64[:], e2: numba.int64[:]  # type: ignore
 ) -> numba.int64[:]:  # type: ignore
@@ -29,7 +25,7 @@ def nself_prod(
     return out
 
 
-@jit(cache=True)
+@njit(cache=True)
 def _morgan(v, e1, e2) -> numba.int64[:]:  # type: ignore
     p, u = to_primes(v)
     history = [(u, p)]
