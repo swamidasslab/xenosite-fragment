@@ -8,9 +8,8 @@ from typing import Iterator, Sequence
 @njit(cache=True)
 def to_primes(x) -> tuple[numba.int64[:], numba.int64]:  # type: ignore
     u = np.unique(x)
-    u = sorted(u)
     p = _p[: len(u)]
-    d = {v: n for n, v in enumerate(u)}
+    d = {v: n for n, v in enumerate(sorted(u))}
     return np.array([p[d[v]] for v in x]), len(u)
 
 
