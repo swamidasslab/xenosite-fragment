@@ -149,7 +149,7 @@ class DFS_EDGE(NamedTuple):
 
 
 def _dfs(
-    s: int,
+    start: int,
     neighbors: dict[int, list[int]],
     visited: Optional[set[Union[int, tuple[int, int]]]] = None,
     out: Optional[list[DFS_EDGE]] = None,
@@ -157,21 +157,20 @@ def _dfs(
 
     visited = visited or set()
     out = out or []
-    visited.add(s)
-    ns = neighbors[s]
+    visited.add(start)
 
-    for n in ns:
-        e = tuple((n, s) if n < s else (s, n))
+    for n in neighbors[start]:
+        e = tuple((n, start) if n < start else (start, n))
         if e in visited:
             continue
 
         if n in visited:
             visited.add(e)
-            out.append(DFS_EDGE(s, n, DFS_TYPE.RING))
+            out.append(DFS_EDGE(start, n, DFS_TYPE.RING))
 
         else:
             visited.add(e)
-            out.append(DFS_EDGE(s, n, DFS_TYPE.TREE))
+            out.append(DFS_EDGE(start, n, DFS_TYPE.TREE))
             _dfs(n, neighbors, visited, out)
     return out
 
@@ -188,6 +187,7 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
     else:
         for n in N:
             N[n] = sorted(N[n])
+
     return _dfs(start, N)
 
 

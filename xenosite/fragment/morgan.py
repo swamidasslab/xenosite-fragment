@@ -6,7 +6,7 @@ from typing import Iterator, Sequence
 
 
 @njit(cache=True)
-def to_primes(x) -> numba.int64[:]:  # type: ignore
+def to_primes(x) -> tuple[numba.int64[:], numba.int64]:  # type: ignore
     u = np.unique(x)
     u = sorted(u)
     p = _p[: len(u)]
