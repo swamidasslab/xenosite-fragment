@@ -1,17 +1,22 @@
-from typing import Union, NamedTuple, Optional, Sequence
 from enum import Enum
-from .morgan import morgan
-from . import serialize
+from typing import NamedTuple, Optional, Sequence, Union, Any
+
 import numpy as np
 
+from . import serialize
+from .morgan import morgan
 
-class Graph:
+
+class BaseGraph:
     def __init__(
         self,
         n: int,
         edge: tuple[Sequence[np.int64], Sequence[np.int64]],
         nlabel: Optional[list[str]] = None,
         elabel: Optional[list[str]] = None,
+        nprops: Optional[dict[str, Sequence[Any]]] = None,
+        eprops: Optional[dict[str, Sequence[Any]]] = None,
+        info: Optional[dict[str, Any]] = None,
     ):
 
         self.n = n
@@ -21,6 +26,70 @@ class Graph:
         )
         self.nlabel = nlabel
         self.elabel = elabel
+        self.nprops = nprops
+        self.eprops = eprops
+        self.info = info
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(n={self.n},\n\tedge={self.edge},\n\tnlabel={self.nlabel},\n\telabel={self.elabel})"
+
+    def subgraph(self, nidx: list[int], eidx: Optional[list[int]] = None) -> "Graph":
+        ns = set(nidx)
+        assert len(nidx) == len(ns)
+
+        n = len(ns)
+        nlabel = [self.nlabel[i] for i in nidx] if self.nlabel else None
+
+        eidx = eidx or [
+            e for e, (i, j) in enumerate(zip(*self.edge)) if i in ns and j in ns
+        ]
+
+        renum = -np.ones(self.n, dtype=np.int64)
+        for i, nid in enumerate(nidx):
+            renum[nid] = i
+
+        elabel = [self.elabel[i] for i in eidx] if self.elabel else None
+
+        e1 = renum[self.edge[0][eidx]]
+        e2 = renum[self.edge[1][eidx]]
+
+        return self.__class__(n=n, edge=(e1, e2), nlabel=nlabel, elabel=elabel)  # type: ignore
+
+
+
+class DirectedGraph(BaseGraph): pass
+
+
+
+
+class Index(dict):
+  __slots__ = ["invert"]
+
+  def __init__(self, invertList : Optional[list] =None):
+    super().__init__()
+    self.invert = invertList or []
+
+  def __setitem__(self, key, value): 
+    raise RuntimeError("Index does not support item setting.") 
+
+  def __getitem__(self, key) -> int:
+    try:
+      return super().__getitem__(key)
+    except KeyError:
+      n = len(self.invert)
+      super().__setitem__(key, n)
+      self.invert.append(key)
+      return n
+
+  def update(self, other) -> "Index":
+    _ = [self[k] for k in other]
+    return self
+
+
+
+
+
+class Graph(BaseGraph): # Undirected Graph
 
     def __repr__(self):
         return f"Graph(n={self.n},\n\tedge={self.edge},\n\tnlabel={self.nlabel},\n\telabel={self.elabel})"
@@ -57,40 +126,18 @@ class Graph:
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
 
-    def subgraph(self, nidx: list[int], eidx: Optional[list[int]] = None) -> "Graph":
-        ns = set(nidx)
-        assert len(nidx) == len(ns)
-
-        n = len(ns)
-        nlabel = [self.nlabel[i] for i in nidx] if self.nlabel else None
-
-        eidx = eidx or [
-            e for e, (i, j) in enumerate(zip(*self.edge)) if i in ns and j in ns
-        ]
-
-        renum = -np.ones(self.n, dtype=np.int64)
-        for i, nid in enumerate(nidx):
-            renum[nid] = i
-
-        elabel = [self.elabel[i] for i in eidx] if self.elabel else None
-
-        e1 = renum[self.edge[0][eidx]]
-        e2 = renum[self.edge[1][eidx]]
-
-        return Graph(n=n, edge=(e1, e2), nlabel=nlabel, elabel=elabel)  # type: ignore
 
     @classmethod
     def from_molecule(cls, molecule, smiles=False) -> "Graph":
-        from . import (
-            chem,
-        )  # lazy import to prevent load of rdkit unless needed
+        from . import \
+            chem  # lazy import to prevent load of rdkit unless needed
 
         if smiles:
             return chem.MolToSmilesGraph(molecule)
         return chem.MolToSmartsGraph(molecule)
 
 
-class DFS_TYPE(Enum):
+class DFS_TYPE(int, Enum):
     TREE = 0
     RING = 1
 

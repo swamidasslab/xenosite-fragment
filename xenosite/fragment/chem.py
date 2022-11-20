@@ -85,8 +85,8 @@ class Fragment:
     def __init__(
         self,
         frag: Union[Graph, Mol, str],
-        nidx: Optional[list[int]] = None,
-        eidx: Optional[list[int]] = None,
+        nidx: Optional[Sequence[int]] = None,
+        eidx: Optional[Sequence[int]] = None,
     ):
         """
         Fragment object to optimze matching of a fragment to multiple molecules.
