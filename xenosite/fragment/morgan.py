@@ -2,11 +2,11 @@ import numpy as np
 import numba
 from numba import jit, njit
 
-from typing import Iterator, Sequence
+from typing import Iterator, Sequence, Union
 
 
 @njit(cache=True)
-def to_primes(x) -> tuple[numba.int64[:], numba.int64]:  # type: ignore
+def to_primes(x) -> tuple[numba.uint64[:], numba.uint32]:  # type: ignore
     u = np.unique(x)
     p = _p[: len(u)]
     d = {v: n for n, v in enumerate(sorted(u))}
@@ -14,9 +14,9 @@ def to_primes(x) -> tuple[numba.int64[:], numba.int64]:  # type: ignore
 
 
 @njit(cache=True)
-def nself_prod(
-    v: numba.int64[:], e1: numba.int64[:], e2: numba.int64[:]  # type: ignore
-) -> numba.int64[:]:  # type: ignore
+def collect_product(
+    v: numba.uint64[:], e1: numba.uint32[:], e2: numba.uint32[:]  # type: ignore
+) -> numba.uint64[:]:  # type: ignore
     out = v.copy()
     for i, j in zip(e1, e2):
         out[i] *= v[j]
@@ -25,11 +25,11 @@ def nself_prod(
 
 
 @njit(cache=True)
-def _morgan(v, e1, e2) -> numba.int64[:]:  # type: ignore
+def _morgan(v, e1: numba.uint32[:], e2: numba.uint32[:]) -> numba.uint64[:]:  # type: ignore
     p, u = to_primes(v)
     history = [(u, p)]
     while True:
-        p = nself_prod(p, e1, e2)
+        p = collect_product(p, e1, e2)
         p, u = to_primes(p)
         if u == len(p):
             return p
@@ -42,10 +42,10 @@ def _morgan(v, e1, e2) -> numba.int64[:]:  # type: ignore
                 return p
 
 
-def morgan(v: Sequence, e1: Sequence[int], e2: Sequence[int]) -> np.ndarray[np.int64]:
+def morgan(v: Union[Sequence,np.ndarray], e1: Sequence[np.uint32], e2: Sequence[np.uint32]) -> np.ndarray[np.uint64]:
     v = np.asarray(v)  # type: ignore
-    e1 = np.asarray(e1, dtype=np.int64)  # type: ignore
-    e2 = np.asarray(e2, dtype=np.int64)  # type: ignore
+    e1 = np.asarray(e1, dtype=np.uint32)  # type: ignore
+    e2 = np.asarray(e2, dtype=np.uint32)  # type: ignore
     return _morgan(v, e1, e2)
 
 
@@ -85,4 +85,4 @@ def gen_primes() -> Iterator[int]:
         q += 1
 
 
-_p = np.array([p for p, _ in zip(gen_primes(), range(1000))])
+_p = np.array([p for p, _ in zip(gen_primes(), range(1000))], dtype=np.uint64)
