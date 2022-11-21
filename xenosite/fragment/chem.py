@@ -111,6 +111,8 @@ class Fragment:
         if isinstance(frag, Graph):
             fragment = frag
 
+        nidx = list(nidx) if nidx else nidx
+
         fragment: Graph = fragment.subgraph(nidx, eidx) if nidx else fragment  # type: ignore
 
         self.graph = fragment
