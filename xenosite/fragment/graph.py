@@ -11,7 +11,7 @@ class BaseGraph:
     def __init__(
         self,
         n: int,
-        edge: tuple[Sequence[np.int64], Sequence[np.int64]],
+        edge: tuple[Sequence[np.uint32], Sequence[np.uint32]],
         nlabel: Optional[list[str]] = None,
         elabel: Optional[list[str]] = None,
         nprops: Optional[dict[str, Sequence[Any]]] = None,
@@ -20,9 +20,9 @@ class BaseGraph:
     ):
 
         self.n = n
-        self.edge: tuple[np.ndarray[np.int64], np.ndarray[np.int64]] = (
-            np.asarray(edge[1], dtype=np.int64),  # type: ignore
-            np.asarray(edge[0], dtype=np.int64),  # type: ignore
+        self.edge: tuple[np.ndarray[np.uint32], np.ndarray[np.uint32]] = (
+            np.asarray(edge[1], dtype=np.uint32),  # type: ignore
+            np.asarray(edge[0], dtype=np.uint32),  # type: ignore
         )
         self.nlabel = nlabel
         self.elabel = elabel
@@ -56,41 +56,35 @@ class BaseGraph:
         return self.__class__(n=n, edge=(e1, e2), nlabel=nlabel, elabel=elabel)  # type: ignore
 
 
-
-class DirectedGraph(BaseGraph): pass
-
-
+class DirectedGraph(BaseGraph):
+    pass
 
 
 class Index(dict):
-  __slots__ = ["invert"]
+    __slots__ = ["invert"]
 
-  def __init__(self, invertList : Optional[list] =None):
-    super().__init__()
-    self.invert = invertList or []
+    def __init__(self, invertList: Optional[list] = None):
+        super().__init__()
+        self.invert = invertList or []
 
-  def __setitem__(self, key, value): 
-    raise RuntimeError("Index does not support item setting.") 
+    # def __setitem__(self, key, value):
+    #   raise RuntimeError("Index does not support item setting.")
 
-  def __getitem__(self, key) -> int:
-    try:
-      return super().__getitem__(key)
-    except KeyError:
-      n = len(self.invert)
-      super().__setitem__(key, n)
-      self.invert.append(key)
-      return n
+    def __getitem__(self, key) -> int:
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            n = len(self.invert)
+            super().__setitem__(key, n)
+            self.invert.append(key)
+            return n
 
-  def update(self, other) -> "Index":
-    _ = [self[k] for k in other]
-    return self
-
-
+    def update(self, other) -> "Index":
+        _ = [self[k] for k in other]
+        return self
 
 
-
-class Graph(BaseGraph): # Undirected Graph
-
+class Graph(BaseGraph):  # Undirected Graph
     def __repr__(self):
         return f"Graph(n={self.n},\n\tedge={self.edge},\n\tnlabel={self.nlabel},\n\telabel={self.elabel})"
 
@@ -126,11 +120,9 @@ class Graph(BaseGraph): # Undirected Graph
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
 
-
     @classmethod
     def from_molecule(cls, molecule, smiles=False) -> "Graph":
-        from . import \
-            chem  # lazy import to prevent load of rdkit unless needed
+        from . import chem  # lazy import to prevent load of rdkit unless needed
 
         if smiles:
             return chem.MolToSmilesGraph(molecule)
