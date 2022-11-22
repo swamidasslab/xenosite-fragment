@@ -9,7 +9,11 @@ app = typer.Typer()
 
 @ray.remote
 def one_frag_network(smiles, rids, max_size):
-  return FragmentNetworkX(smiles, marked=rids, max_size=max_size)
+  try:
+    return FragmentNetworkX(smiles, marked=rids, max_size=max_size)
+  except Exception:
+    print("Failed on:", smiles, rids)
+    return FragmentNetworkX(max_size=max_size)
   
 
 def ray_apply(seq, launch_job, concurrent):
