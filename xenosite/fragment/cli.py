@@ -7,7 +7,7 @@ import csv
 
 app = typer.Typer()
 
-@ray.remote
+@ray.remote(max_calls=50)
 def one_frag_network(smiles, rids, max_size):
   try:
     return FragmentNetworkX(smiles, marked=rids, max_size=max_size)
@@ -20,22 +20,26 @@ def ray_apply(seq, launch_job, concurrent):
   result_refs = []
   ready = []
 
-  for s in tqdm(seq, "Dispatched"):
-    if len(result_refs) >= concurrent:
+  with tqdm(total=len(seq)) as pbar:
+
+    for s in seq:
+      if len(result_refs) >= concurrent:
+        ready, result_refs = ray.wait(result_refs, fetch_local=True)
+
+      result_refs.append(launch_job(s))
+
+      while ready:
+        pbar.update(1)
+        yield ready.pop()
+
+    while result_refs:
       ready, result_refs = ray.wait(result_refs, fetch_local=True)
 
-    result_refs.append(launch_job(s))
+      while ready:
+        pbar.update(1)
+        yield ready.pop()
 
-    while ready:
-      yield ready.pop()
-
-  for _ in tqdm(range(len(result_refs)), "Last Batch"):
-    ready, result_refs = ray.wait(result_refs, fetch_local=True)
-
-    while ready:
-      yield ready.pop()
-
-  assert len(result_refs) == 0
+    assert len(result_refs) == 0
 
 
 
@@ -60,7 +64,7 @@ def build_network(
   input: str = typer.Argument("tuple_dataset.csv"), 
   output: str = typer.Argument("network.pkl.gz"), 
   max_size : int = 12, 
-  concurrent : int = 30):
+  concurrent : int = 12):
 
   ray.init(runtime_env=runtime_env)
 
