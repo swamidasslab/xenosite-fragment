@@ -48,6 +48,8 @@ def read_data(filename: str):
       smi, sor = R
       sor = ast.literal_eval(sor)
       sor = {s[0] for s in sor}
+
+      smi = smi.split(".")[0]
       data.append((smi, sor))
 
   return data
