@@ -94,4 +94,5 @@ Find matches to fragments:
 
 from .graph import Graph
 from .chem import Fragment, MolToSmartsGraph
+from .netx import FragmentNetwork as FragmentNetworkX
 from ._version import __version__

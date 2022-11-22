@@ -1,3 +1,5 @@
+typer
+tqdm
 numba
 numpy
 data-science-types
