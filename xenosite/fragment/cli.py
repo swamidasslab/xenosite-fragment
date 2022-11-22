@@ -4,10 +4,11 @@ import ray
 import typer
 import ast
 import csv
+import gc
 
 app = typer.Typer()
 
-@ray.remote(max_calls=50)
+@ray.remote(max_calls=200)
 def one_frag_network(smiles, rids, max_size):
   try:
     return FragmentNetworkX(smiles, marked=rids, max_size=max_size)
@@ -60,11 +61,11 @@ def read_data(filename: str):
 
 
 @app.command()
-def build_network(
+def main(
   input: str = typer.Argument("tuple_dataset.csv"), 
   output: str = typer.Argument("network.pkl.gz"), 
   max_size : int = 12, 
-  concurrent : int = 12):
+  concurrent : int = 30):
 
   ray.init(runtime_env=runtime_env)
 
@@ -76,8 +77,10 @@ def build_network(
     lambda d: one_frag_network.remote(d[0], d[1], max_size), 
     concurrent=concurrent
   ):
-
-    result.update(ray.get(frag_graph))
+    R = ray.get(frag_graph)
+    result.update(R)
+    del R
+    
   
   result.save(output)
 

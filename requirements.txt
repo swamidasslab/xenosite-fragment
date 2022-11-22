@@ -5,3 +5,4 @@ numpy
 data-science-types
 pydantic
 rdkit
+networkx
