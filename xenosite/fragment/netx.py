@@ -55,7 +55,7 @@ class FragmentNetwork:
 
             # normalized count of marked ids by position in fragment
             marked_ids = (np.array(ids)[:, :, None] == amarked).sum(axis=0).sum(axis=1)
-            marked_ids = marked_ids / max(marked_ids.sum(), 1) * len(marked)  # type: ignore
+            marked_ids = np.where(marked_ids > 0, 1, 0)  # type: ignore
 
             ids = [set(i) for i in ids]
             size = len(ids[0])
@@ -214,12 +214,12 @@ class RingFragmentNetwork(FragmentNetwork):
         for x in sorted(ids)
       ], [])))
 
-    def _subgraph_network_ids(self, rdmol: rdkit.Chem.Mol, mol: Graph) -> nx.DiGraph:
+    def _subgraph_network_ids(self, rdmol: rdkit.Chem.Mol, mol: Graph) -> nx.DiGraph:  # type: ignore
         graph = ring_graph(rdmol, mol)
         assert graph.nprops
         
         out = subgraph_network_ids(graph, self.max_size)
-        out.mapping = graph.nprops["mapping"]
+        out.mapping = graph.nprops["mapping"]  # type: ignore
         return out
 
 
@@ -227,10 +227,11 @@ class RingFragmentNetwork(FragmentNetwork):
         
 
 
-def ring_graph(rdmol : rdkit.Chem.Mol, mol: Optional[Graph] = None):
+def ring_graph(rdmol : rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size=8):
   mol  = mol or  MolToSmartsGraph(rdmol)
   
-  rings = sorted(sorted(r) for r in rdmol.GetRingInfo().AtomRings())
+  # sort rings and remove macro-cycles larger than max_ring_size
+  rings = sorted(sorted(r) for r in rdmol.GetRingInfo().AtomRings() if len(r) <= max_ring_size)
   rings_set = [set(r) for r in rings]
 
   ring_atoms = reduce(lambda x,y: x | y, (set(r) for r in rings), set())
