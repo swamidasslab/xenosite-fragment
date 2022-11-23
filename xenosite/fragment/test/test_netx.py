@@ -1,4 +1,4 @@
-from xenosite.fragment import FragmentNetworkX
+from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
 from hypothesis import strategies as st, given
 from rdkit import Chem
 
@@ -72,12 +72,25 @@ def random_smiles_pair(draw):
 
 
 @given(random_smiles_pair())  # type: ignore
-def test_order_indepence(smiles_pair):
-#  rsmiles = Chem.MolToRandomSmilesVect(Chem.MolFromSmiles(smiles),1,randomSeed=seed)[0]
+def test_order_independence_fragnetwork(smiles_pair):
   smiles, rsmiles = smiles_pair
 
   F = FragmentNetworkX(smiles, max_size=5).network
   rF = FragmentNetworkX(rsmiles, max_size=5).network
+
+  assert set(F) == set(rF)
+  assert set(F.edges) == set(rF.edges) 
+
+  for frag in F:
+    assert F.nodes[frag]["count"] == rF.nodes[frag]["count"]
+
+
+@given(random_smiles_pair())  # type: ignore
+def test_order_independence_ringfragnetwork(smiles_pair):
+  smiles, rsmiles = smiles_pair
+
+  F = RingFragmentNetworkX(smiles, max_size=5).network
+  rF = RingFragmentNetworkX(rsmiles, max_size=5).network
 
   assert set(F) == set(rF)
   assert set(F.edges) == set(rF.edges) 
