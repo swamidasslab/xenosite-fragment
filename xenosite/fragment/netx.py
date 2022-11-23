@@ -3,6 +3,7 @@ from typing import Optional, Union, Sequence
 from .graph import Graph, neighbors
 from .chem import Fragment
 from collections import defaultdict
+from scipy.stats import hypergeom
 from functools import reduce
 import gzip
 import pickle
@@ -11,7 +12,7 @@ import rdkit
 
 class FragmentNetwork:
     max_size: int = 10
-    agg_attr = ["count", "marked_count", "marked_ids"]
+    agg_attr = ["count", "marked_count", "marked_ids", "exp", "obs", "n"]
 
     def __init__(
         self,
@@ -72,8 +73,15 @@ class FragmentNetwork:
                 / size
             )
 
+            # exp = probability of fragment overlapping with at least one marked atom
+            # given: size of molecule, number of atoms matching fragment, number of marked atoms
+            exp = 1 - hypergeom.cdf(0, mol.n, int(count * size), len(marked))
+            obs = 1 if marked_count else 0
+            n = 1
+
             network.add_node(
-                frag, count=count, marked_count=marked_count, marked_ids=marked_ids
+                frag, count=count, marked_count=marked_count, marked_ids=marked_ids,
+                n=n, exp=exp, obs=obs
             )
 
         for u, v in id_network.edges:
@@ -89,7 +97,10 @@ class FragmentNetwork:
             "count": self.network.nodes[frag]["count"],
             "count_marked": self.network.nodes[frag]["marked_count"],
             "marked_ids": self.network.nodes[frag]["marked_ids"],
-            "size": len( self.network.nodes[frag]["marked_ids"])
+            "size": len( self.network.nodes[frag]["marked_ids"]),
+            "n": self.network.nodes[frag]["n"],
+            "exp": self.network.nodes[frag]["exp"],
+            "obs": self.network.nodes[frag]["obs"],
           } for frag in self.network])  # type: ignore
       return  df.set_index("frag")
 
