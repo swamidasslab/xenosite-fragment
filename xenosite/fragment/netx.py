@@ -266,9 +266,10 @@ def ring_graph(rdmol : rdkit.Chem.Mol, mol: Optional[Graph] = None):
     for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set:
       edges.append((i,mapping_inverted[j]))
 
-  edges = np.array(edges, dtype=np.uint32).T
+  u = [ i for i, _ in edges ]
+  v = [ j for _, j in edges ]
 
   return Graph(n=len(mapping), 
-    edge=(edges[0], edges[1]), # type: ignore
+    edge=(u,v), # type: ignore
     nprops = {"mapping": mapping}
   )
