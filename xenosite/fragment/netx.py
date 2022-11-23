@@ -81,6 +81,18 @@ class FragmentNetwork:
 
         self.network = network
 
+    def to_pandas(self):
+      import pandas as pd
+      df = pd.DataFrame.from_dict([
+          {
+            "frag": frag,
+            "count": self.network.nodes[frag]["count"],
+            "count_marked": self.network.nodes[frag]["marked_count"],
+            "marked_ids": self.network.nodes[frag]["marked_ids"],
+            "size": len( self.network.nodes[frag]["marked_ids"])
+          } for frag in self.network])  # type: ignore
+      return  df.set_index("frag")
+
     def _remap_ids(self, ids : Sequence[int], id_network: nx.DiGraph) -> Sequence[int]: 
       return ids
 
