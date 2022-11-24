@@ -1,27 +1,34 @@
-from xenosite.fragment import FragmentNetworkX
-from tqdm import tqdm
+from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
+from tqdm import tqdm # type: ignore
 import ray
 import typer
 import ast
 import csv
-import gc
+import os
+import os.path
+from typing import Optional
+
+DATA = os.environ.get("DATA", None)
 
 app = typer.Typer()
 
 @ray.remote(max_calls=200)
-def one_frag_network(smiles, rids, max_size):
+def one_frag_network(smiles, rids, max_size : int, ring : bool):
+
+  NetworkClass = RingFragmentNetworkX if ring else FragmentNetworkX
+
   try:
-    return FragmentNetworkX(smiles, marked=rids, max_size=max_size)
+    return NetworkClass(smiles, marked=rids, max_size=max_size)
   except Exception:
     print("Failed on:", smiles, rids)
-    return FragmentNetworkX(max_size=max_size)
+    return NetworkClass(max_size=max_size)
   
 
 def ray_apply(seq, launch_job, concurrent):
   result_refs = []
   ready = []
 
-  with tqdm(total=len(seq)) as pbar:
+  with tqdm(total=len(seq), ncols=65) as pbar:
 
     for s in seq:
       if len(result_refs) >= concurrent:
@@ -62,25 +69,32 @@ def read_data(filename: str):
 
 @app.command()
 def main(
-  input: str = typer.Argument("tuple_dataset.csv"), 
+  input: str = typer.Argument("bioactivation_dataset.csv"), 
   output: str = typer.Argument("network.pkl.gz"), 
   max_size : int = 12, 
-  concurrent : int = 30):
+  directory : Optional[str] = DATA,
+  concurrent : int = 30,
+  ring : bool = False):
+
+  NetworkClass = RingFragmentNetworkX if ring else FragmentNetworkX
 
   ray.init(runtime_env=runtime_env)
 
+  if directory:
+    input = os.path.join(directory, input)
+    output = os.path.join(directory, output)
+
   data = read_data(input)
-  result = FragmentNetworkX(max_size=max_size)
+  result = NetworkClass(max_size=max_size)
 
   for frag_graph in ray_apply(
     data,
-    lambda d: one_frag_network.remote(d[0], d[1], max_size), 
+    lambda d: one_frag_network.remote(d[0], d[1], max_size, ring), 
     concurrent=concurrent
   ):
     R = ray.get(frag_graph)
     result.update(R)
     del R
-    
   
   result.save(output)
 
