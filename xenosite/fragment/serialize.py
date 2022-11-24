@@ -1,6 +1,7 @@
 import typing
 from enum import Enum
 
+import heapq
 import numpy as np
 
 from . import graph
@@ -9,7 +10,6 @@ from . import graph
 class Serialized(typing.NamedTuple):
     string: str
     reordering: list[int]
-
 
 
 def serialize(G: "graph.Graph", canonize=True) -> Serialized:
@@ -24,18 +24,22 @@ def serialize(G: "graph.Graph", canonize=True) -> Serialized:
 
 
 class NodeInfo(typing.TypedDict):
-  ring_forward : list["graph.DFS_EDGE"]
-  ring_backward : list["graph.DFS_EDGE"]
-  tree_forward : list["graph.DFS_EDGE"]
-  tree_backward : list["graph.DFS_EDGE"]
+    ring_forward: list["graph.DFS_EDGE"]
+    ring_backward: list["graph.DFS_EDGE"]
+    tree_forward: list["graph.DFS_EDGE"]
+    tree_backward: list["graph.DFS_EDGE"]
 
 
-def _collect_node_info(dfs: list["graph.DFS_EDGE"], nodes : list[int]) -> dict[int,  NodeInfo]:
+def _collect_node_info(
+    dfs: list["graph.DFS_EDGE"], nodes: list[int]
+) -> dict[int, NodeInfo]:
 
     # collect DFS info for all nodes
-    node_info : dict[int,  NodeInfo]= {
-      i: NodeInfo(ring_forward=[], ring_backward=[], tree_forward=[], tree_backward=[])
-      for i in nodes
+    node_info: dict[int, NodeInfo] = {
+        i: NodeInfo(
+            ring_forward=[], ring_backward=[], tree_forward=[], tree_backward=[]
+        )
+        for i in nodes
     }
 
     for EDGE in dfs:
@@ -59,6 +63,7 @@ def _collect_node_info(dfs: list["graph.DFS_EDGE"], nodes : list[int]) -> dict[i
             nj["ring_forward"].append(EDGE)
     return node_info
 
+
 def smiles_serialize(
     dfs: list["graph.DFS_EDGE"],
     n: int,
@@ -77,7 +82,9 @@ def smiles_serialize(
         raise ValueError("Multiple components in graph are not allowed.")
 
     # output-ordered nodes
-    ordered_nodes : list[int] = [dfs[0][0]] + [j for _, j, t in dfs if t != graph.DFS_TYPE.RING]
+    ordered_nodes: list[int] = [dfs[0][0]] + [
+        j for _, j, t in dfs if t != graph.DFS_TYPE.RING
+    ]
 
     if len(ordered_nodes) != n:
         raise ValueError("Multiple components in graph are not allowed.")
@@ -87,70 +94,96 @@ def smiles_serialize(
     ring_labels = _label_rings(node_info, ordered_nodes)
 
     dfs_labels = _label_dfs(dfs, elabel, edge)
-    
-    return _serialize(node_info, ordered_nodes, nlabel, dfs_labels, ring_labels)
 
+    return _serialize(node_info, ordered_nodes, nlabel, dfs_labels, ring_labels)
 
 
 def _label_dfs(
     dfs: list["graph.DFS_EDGE"],
     elabel: list[str],
-    edge: tuple[np.ndarray[np.int64], np.ndarray[np.int64]]
-  ) -> dict["graph.DFS_EDGE", str]:
+    edge: tuple[np.ndarray[np.int64], np.ndarray[np.int64]],
+) -> dict["graph.DFS_EDGE", str]:
 
     # look up for edge labels
-    L : dict[tuple[int, int], str] = {(i, j): l for i, j, l in zip(edge[0], edge[1], elabel)}
+    L: dict[tuple[int, int], str] = {
+        (i, j): l for i, j, l in zip(edge[0], edge[1], elabel)
+    }
 
-    dfs_labels : dict["graph.DFS_EDGE", str] = {}
+    dfs_labels: dict["graph.DFS_EDGE", str] = {}
     for E in dfs:
-      i, j, _  = E
+        i, j, _ = E
 
-      if (i, j) in L:
-        dfs_labels[E] = L[(i,j)]
-        continue
+        if (i, j) in L:
+            dfs_labels[E] = L[(i, j)]
+            continue
 
-      if (j, i) in L:
-        dfs_labels[E] = L[(j,i)]
+        if (j, i) in L:
+            dfs_labels[E] = L[(j, i)]
 
     return dfs_labels
-  
+
+
+class RingIds:
+    def __init__(self):
+        self.active = set()
+        self.inactive = []
+        self.n = 0
+
+    def open_ring(self) -> int:
+        if not self.inactive:
+            ring_id = self._add_id()
+        else:
+            ring_id = heapq.heappop(self.inactive)
+
+        self.active.add(ring_id)
+        return ring_id
+
+    def close_ring(self, ring_id: int):
+        self.active.remove(ring_id)
+        heapq.heappush(self.inactive, ring_id)
+
+    @classmethod
+    def format(cls, n):
+        s = str(n)
+        s = "%" + s if len(s) > 1 else s
+        return s
+
+    def _add_id(self):
+        self.n += 1
+        return self.n
 
 
 def _label_rings(
-  node_info: dict[int,  NodeInfo], 
-  ordered_nodes : list[int]
+    node_info: dict[int, NodeInfo], ordered_nodes: list[int]
 ) -> dict["graph.DFS_EDGE", str]:
+    R = RingIds()
 
     # assign a non-overlapping number to each ring edge
-    ring : dict[graph.DFS_EDGE, str] = {}
-    rids : set[str] = set("123456789")
-    active_rids : set[str]= set()
+    ring: dict[graph.DFS_EDGE, int] = {}
 
     for n in ordered_nodes:
         info = node_info[n]
-        ids = sorted(rids - active_rids)
 
-        for i, e in zip(ids, info["ring_forward"]):
-            ring[e] = i
-            active_rids.add(i)
+        for e in info["ring_forward"]:
+            ring[e] = R.open_ring()
 
         for e in info["ring_backward"]:
-            active_rids.remove(ring[e])
+            R.close_ring(ring[e])
 
-    return ring
+    return {k: R.format(v) for k, v in ring.items()}
 
 
 def _serialize(
-  node_info: dict[int,  NodeInfo],
-  ordered_nodes: list[int],
-  nlabel: list[str],
-  dfs_labels:  dict["graph.DFS_EDGE", str],
-  ring_labels : dict["graph.DFS_EDGE", str]
+    node_info: dict[int, NodeInfo],
+    ordered_nodes: list[int],
+    nlabel: list[str],
+    dfs_labels: dict["graph.DFS_EDGE", str],
+    ring_labels: dict["graph.DFS_EDGE", str],
 ) -> Serialized:
 
     # sourcery skip: use-fstring-for-concatenation
 
-    out : list[str] = []
+    out: list[str] = []
 
     # generate output
     for n in ordered_nodes:
@@ -164,16 +197,16 @@ def _serialize(
             o = dfs_labels[e[0]] + o
 
         # append edge label and ID of backref rings
-        for e in info["ring_backward"]: 
+        for e in info["ring_backward"]:
             o += dfs_labels[e] + ring_labels[e]
 
         # append ID of forwardref rings
-        for e in  info["ring_forward"]:
+        for e in info["ring_forward"]:
             o += ring_labels[e]
 
         # prepend open and close parenthesis for branches
-        if e := info["tree_backward"]: # incoming tree edge
-            # source of incoming edge is e[0] 
+        if e := info["tree_backward"]:  # incoming tree edge
+            # source of incoming edge is e[0]
             fe = node_info[e[0][0]][
                 "tree_forward"
             ]  # list of outgoing tree edges from source
