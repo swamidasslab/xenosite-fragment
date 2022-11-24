@@ -59,6 +59,19 @@ def MolToSmilesGraph(mol: Mol) -> Graph:
 _bond_symbol = {1.0: "-", 1.5: ":", 2.0: "=", 3.0: "#"}
 
 
+def _get_smarts_symbol(atom):
+  out = atom.GetSmarts(isomericSmiles=False)
+
+  # Next line is necessary to prevent broken SMARTS like:
+  #    n1:c:[nH]:c:c:c:1
+  # which has a valence violation and cannot be depicted. 
+  # It is unclear which molecules yield fragments with this problem.
+  out = "n" if out=="[nH]" else out 
+
+  return out
+
+
+
 def MolToSmartsGraph(mol: Mol) -> Graph:
     """
     Convert rdkit molecule to Graph, labeled so as to be a SMARTS string on serialization.
@@ -71,7 +84,7 @@ def MolToSmartsGraph(mol: Mol) -> Graph:
     :return: Smarts labeled graph.
     :rtype: Graph
     """
-    label_node = lambda x: x.GetSmarts(isomericSmiles=False)
+    label_node = _get_smarts_symbol
     label_edge = lambda x: _bond_symbol[x.GetBondTypeAsDouble()]
 
     return MolToGraph(mol, label_node=label_node, label_edge=label_edge)
