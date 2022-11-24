@@ -7,18 +7,29 @@ import csv
 import os
 import os.path
 from typing import Optional
+import logging
+from rdkit import Chem
+
+logger = logging.getLogger("xenosite.fragment")
+logger.setLevel(logging.INFO)
 
 DATA = os.environ.get("DATA", None)
 
 app = typer.Typer()
 
 
-@ray.remote(max_calls=200)
+@ray.remote(max_calls=200, num_cpus=1)
 def one_frag_network(smiles, rids, max_size: int, ring: bool):
 
     NetworkClass = RingFragmentNetworkX if ring else FragmentNetworkX
 
     try:
+        mol = Chem.MolFromSmiles(smiles)  # type: ignore
+        if not mol:
+            return NetworkClass(max_size=max_size)
+        if mol.GetNumAtoms() < 3:
+            return NetworkClass(max_size=max_size)
+
         return NetworkClass(smiles, marked=rids, max_size=max_size)
     except Exception:
         print("Failed on:", smiles, rids)
@@ -73,21 +84,24 @@ def main(
     output: str = typer.Argument("network.pkl.gz"),
     max_size: int = 12,
     directory: Optional[str] = DATA,
-    concurrent: int = 30,
+    concurrent: int = 100,
     ring: bool = False,
     filter_unmarked: bool = True,
 ):
 
     NetworkClass = RingFragmentNetworkX if ring else FragmentNetworkX
 
-    ray.init(runtime_env=runtime_env)
-
     if directory:
         input = os.path.join(directory, input)
         output = os.path.join(directory, output)
 
+    logger.info(f" reading data from {input}")
     data = read_data(input)
     result = NetworkClass(max_size=max_size)
+
+    logger.info(f" building network")
+
+    ray.init(address="auto", runtime_env=runtime_env)
 
     for frag_graph in ray_apply(
         data,
@@ -99,6 +113,8 @@ def main(
         del R
 
     if filter_unmarked:
+
+        logger.info(f" filtering unmarked fragments")
         unmarked = [
             frag
             for frag in result.network
@@ -106,12 +122,13 @@ def main(
         ]
         result.network.remove_nodes_from(unmarked)
 
+    logger.info(f" saving network to {output}")
     result.save(output)
 
 
 runtime_env = {
     "pip": ["numba", "rdkit", "networkx"],
-    "working_dir": "./",
+    "py_modules": ["xenosite"],
     "exclude": ["*.csv", ".git", "*.ipynb", "*.gz"],
     "eager_install": True,
 }
