@@ -96,3 +96,13 @@ from .graph import Graph
 from .chem import Fragment, MolToSmartsGraph
 from .netx import FragmentNetwork as FragmentNetworkX, RingFragmentNetwork as RingFragmentNetworkX
 from ._version import __version__
+
+
+
+def rdkit_warnings(log : bool =True):
+  from rdkit import RDLogger
+  if not log:
+    RDLogger.DisableLog('rdApp.*') 
+  else:
+    RDLogger.EnableLog('rdApp.*') 
+
