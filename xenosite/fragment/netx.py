@@ -9,10 +9,17 @@ import gzip
 import pickle
 import networkx as nx
 import rdkit
+import logging
+
+logging.basicConfig(format=logging.BASIC_FORMAT)
+
+logger = logging.getLogger(__name__)
+
 
 class FragmentNetwork:
     max_size: int = 10
     agg_attr = ["count", "marked_count", "marked_ids", "exp", "obs", "n"]
+    _version: int = 1
 
     def __init__(
         self,
@@ -20,15 +27,17 @@ class FragmentNetwork:
         marked: Optional[set[int]] = None,
         max_size: Optional[int] = None,
     ):
+        self.version: int = self._version
+
         if not smiles:
             self.network = nx.DiGraph()
             self.molrefs = nx.DiGraph()
             return
 
-        rdmol : rdkit.Chem.Mol = rdkit.Chem.MolFromSmiles(smiles)
+        rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmiles(smiles)  # type: ignore
         assert rdmol, f"Not a valid SMILES: ${smiles}"
 
-        mol : Graph = Fragment(rdmol).graph
+        mol: Graph = Fragment(rdmol).graph
         marked = marked or set()
 
         network = nx.DiGraph()
@@ -46,7 +55,7 @@ class FragmentNetwork:
             serial = Fragment(mol, full_ids).canonical(remap=True)
             frag = serial.string  # type: ignore
             id_network.nodes[ids]["frag"] = frag
-            
+
             frag2reordering[frag].append(serial.reordering)
             # frag2ids[frag].append(ids)
 
@@ -80,8 +89,13 @@ class FragmentNetwork:
             n = 1
 
             network.add_node(
-                frag, count=count, marked_count=marked_count, marked_ids=marked_ids,
-                n=n, exp=exp, obs=obs
+                frag,
+                count=count,
+                marked_count=marked_count,
+                marked_ids=marked_ids,
+                n=n,
+                exp=exp,
+                obs=obs,
             )
 
         for u, v in id_network.edges:
@@ -90,26 +104,31 @@ class FragmentNetwork:
         self.network = network
 
     def to_pandas(self):
-      import pandas as pd
-      df = pd.DataFrame.from_dict([
-          {
-            "frag": frag,
-            "count": self.network.nodes[frag]["count"],
-            "count_marked": self.network.nodes[frag]["marked_count"],
-            "marked_ids": self.network.nodes[frag]["marked_ids"],
-            "size": len( self.network.nodes[frag]["marked_ids"]),
-            "n": self.network.nodes[frag]["n"],
-            "exp": self.network.nodes[frag]["exp"],
-            "obs": self.network.nodes[frag]["obs"],
-          } for frag in self.network])  # type: ignore
-      return  df.set_index("frag")
+        import pandas as pd
 
-    def _remap_ids(self, ids : Sequence[int], id_network: nx.DiGraph) -> Sequence[int]: 
-      return ids
+        df = pd.DataFrame.from_dict(
+            [
+                {
+                    "frag": frag,
+                    "count": self.network.nodes[frag]["count"],
+                    "count_marked": self.network.nodes[frag]["marked_count"],
+                    "marked_ids": self.network.nodes[frag]["marked_ids"],
+                    "size": len(self.network.nodes[frag]["marked_ids"]),
+                    "n": self.network.nodes[frag]["n"],
+                    "exp": self.network.nodes[frag]["exp"],
+                    "obs": self.network.nodes[frag]["obs"],
+                }
+                for frag in self.network
+            ]  # type: ignore
+        )
+        return df.set_index("frag")
+
+    def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:
+        return ids
 
     def _subgraph_network_ids(self, rdmol: rdkit.Chem.Mol, mol: Graph) -> nx.DiGraph:  # type: ignore
         return subgraph_network_ids(mol, self.max_size)
-        
+
     def save(self, filename: str):
         with gzip.GzipFile(filename, "wb") as f:
             pickle.dump(self, f)
@@ -117,7 +136,21 @@ class FragmentNetwork:
     @classmethod
     def load(cls, filename: str) -> "FragmentNetwork":
         with gzip.GzipFile(filename, "rb") as f:
-            return pickle.load(f)
+            network = pickle.load(f)
+
+        if not isinstance(network, cls):
+            logger.warning(
+                f" Loaded object is not the required class: {type(network)} != {cls}"
+            )
+            return network
+
+        net_version = network.__dict__.get("version", 0)
+        if net_version != cls._version:
+            logger.warning(
+                f" Network version does not match library: v{net_version} != v{cls._version}"
+            )
+
+        return network
 
     def update(self, other: "FragmentNetwork"):
         new_frags = []
@@ -223,77 +256,75 @@ def subgraph_network_ids(
 
     return network
 
+
 import rdkit
 
 from xenosite.fragment.chem import MolToSmartsGraph
 
 
 class RingFragmentNetwork(FragmentNetwork):
-
-    def _remap_ids(self, ids : Sequence[int], id_network: nx.DiGraph) -> Sequence[int]: 
-      mapping = id_network.mapping # type: ignore
-      return list(set(reduce(lambda x, y: x + y, [
-        mapping[x]
-        for x in sorted(ids)
-      ], [])))
+    def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:
+        mapping = id_network.mapping  # type: ignore
+        return list(
+            set(reduce(lambda x, y: x + y, [mapping[x] for x in sorted(ids)], []))
+        )
 
     def _subgraph_network_ids(self, rdmol: rdkit.Chem.Mol, mol: Graph) -> nx.DiGraph:  # type: ignore
         graph = ring_graph(rdmol, mol)
         assert graph.nprops
-        
+
         out = subgraph_network_ids(graph, self.max_size)
         out.mapping = graph.nprops["mapping"]  # type: ignore
         return out
 
 
-        
-        
+def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size=8):  # type: ignore
+    mol = mol or MolToSmartsGraph(rdmol)
 
+    # sort rings and remove macro-cycles larger than max_ring_size
+    rings = sorted(
+        sorted(r) for r in rdmol.GetRingInfo().AtomRings() if len(r) <= max_ring_size
+    )
+    rings_set = [set(r) for r in rings]
 
-def ring_graph(rdmol : rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size=8):
-  mol  = mol or  MolToSmartsGraph(rdmol)
-  
-  # sort rings and remove macro-cycles larger than max_ring_size
-  rings = sorted(sorted(r) for r in rdmol.GetRingInfo().AtomRings() if len(r) <= max_ring_size)
-  rings_set = [set(r) for r in rings]
+    ring_atoms = reduce(lambda x, y: x | y, (set(r) for r in rings), set())
+    non_ring_atoms = [x for x in range(mol.n) if x not in ring_atoms]
 
-  ring_atoms = reduce(lambda x,y: x | y, (set(r) for r in rings), set())
-  non_ring_atoms = [x for x in range(mol.n) if x not in ring_atoms]
+    mapping = rings + [[x] for x in non_ring_atoms]
 
-  mapping = rings + [[x] for x in  non_ring_atoms]
+    mapping_inverted = {x: n + len(rings) for n, x in enumerate(non_ring_atoms)}
 
-  mapping_inverted = {x: n + len(rings) for n, x in enumerate(non_ring_atoms)}
+    N = neighbors(mol)
+    N = {k: set(v) for k, v in N.items()}
 
-  N = neighbors(mol)
-  N = {k: set(v) for k,v in N.items()}
+    ring_N = {
+        n: reduce(lambda x, y: x | y, (N[a] for a in r), set())
+        for n, r in enumerate(rings)
+    }
 
-  ring_N = { n: reduce(lambda x,y: x | y, (N[a] for a in r), set()) 
-    for n, r in enumerate(rings) } 
+    edges = []
 
-  edges = []
+    # ring-ring edges
+    for i in range(len(rings)):
+        for j in range(i + 1, len(rings)):
+            if ring_N[i] & rings_set[j]:
+                edges.append((i, j))
 
-  # ring-ring edges
-  for i in range(len(rings)):
-    for j in range(i + 1, len(rings)):
-      if ring_N[i] & rings_set[j]:
-        edges.append((i,j))
+    non_ring_atoms_set = set(non_ring_atoms)
 
-  non_ring_atoms_set = set(non_ring_atoms)
+    # atom-atom edges
+    for u, v in zip(*mol.edge):
+        if u in non_ring_atoms_set and v in non_ring_atoms_set:
+            edges.append((mapping_inverted[u], mapping_inverted[v]))
 
-  # atom-atom edges
-  for u, v in zip(*mol.edge):
-    if u in non_ring_atoms_set and v in non_ring_atoms_set:
-      edges.append((mapping_inverted[u], mapping_inverted[v])) 
+    # ring-atom edges
+    for i in range(len(rings)):
+        for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set:
+            edges.append((i, mapping_inverted[j]))
 
-  # ring-atom edges
-  for i in range(len(rings)):
-    for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set:
-      edges.append((i,mapping_inverted[j]))
+    u = [i for i, _ in edges]
+    v = [j for _, j in edges]
 
-  u = [ i for i, _ in edges ]
-  v = [ j for _, j in edges ]
-
-  return Graph(n=len(mapping), 
-    edge=(u,v), # type: ignore
-    nprops = {"mapping": mapping}
-  )
+    return Graph(
+        n=len(mapping), edge=(u, v), nprops={"mapping": mapping}  # type: ignore
+    )
