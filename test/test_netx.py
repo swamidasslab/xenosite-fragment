@@ -1,6 +1,6 @@
 from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
 from hypothesis import strategies as st, given, assume, settings
-from xenosite.fragment.test.util import random_smiles_pair
+from test.util import random_smiles_pair
 
 
 def test_propane():
