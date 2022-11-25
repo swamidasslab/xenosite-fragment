@@ -122,7 +122,15 @@ class FragmentNetwork:
             network.add_node(frag, **stats)
 
         for u, v in id_network.edges:
-            network.add_edge(id_network.nodes[u]["frag"], id_network.nodes[v]["frag"])
+            fu = id_network.nodes[u]["frag"]
+            fv = id_network.nodes[v]["frag"]
+            if fu != fv:
+                network.add_edge(fu, fv)
+
+        top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
+        mol_key = (smiles, "ref")  # type: ignore
+
+        nx.add_star(network, [mol_key] + top)
 
         self.network = network
 
@@ -130,7 +138,11 @@ class FragmentNetwork:
         import pandas as pd
 
         df = pd.DataFrame.from_dict(
-            [dict(frag=frag, **self.network.nodes[frag]) for frag in self.network]  # type: ignore
+            [
+                dict(frag=frag, **self.network.nodes[frag])
+                for frag in self.network
+                if isinstance(frag, str)
+            ]  # type: ignore
         )
 
         df["size"] = df["n_cover"] / df["count"]
@@ -169,7 +181,7 @@ class FragmentNetwork:
         new_frags = []
 
         for frag in other.network.nodes:
-            if frag in self.network:
+            if frag in self.network and isinstance(frag, str):
                 for att in self.agg_attr:
                     self.network.nodes[frag][att] = (
                         self.network.nodes[frag][att] + other.network.nodes[frag][att]

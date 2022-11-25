@@ -114,9 +114,17 @@ def network(
         unmarked = [
             frag
             for frag in result.network
-            if not result.network.nodes[frag]["marked_count"]
+            if isinstance(frag, str) and not result.network.nodes[frag]["marked_count"]
         ]
         result.network.remove_nodes_from(unmarked)
+
+        unmarked_ref = [
+            ref
+            for ref, degree in result.network.out_degree
+            if isinstance(ref, tuple) and degree == 0
+        ]
+
+        result.network.remove_nodes_from(unmarked_ref)
 
     logger.info(f"[bold blue]saving network to {output}[/bold blue]")
     result.save(str(output))
