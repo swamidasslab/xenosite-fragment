@@ -1,5 +1,7 @@
+*.ipynb
 .hypothesis
 build
+dist
 .direnv
 ./.direnv
 .env

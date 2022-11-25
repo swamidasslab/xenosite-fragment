@@ -32,10 +32,12 @@ setup(
     author_email="swamidass@wustl.edu",
     packages=["xenosite/fragment"],
     entry_points={
-        "console_scripts": ["xenosite-fragment=xenosite.fragment.__main__:app"],
-        "xenosite-cli": ["xenosite-fragment=xenosite.fragment.__main__:app"],
+        "console_scripts": [
+            "xenosite-fragment=xenosite.fragment.__main__:app",
+        ],
+        "xenosite_command": ["fragment=xenosite.fragment.__main__:app"],
     },
-    install_requires=["rdkit", "numpy", "numba"],
+    install_requires=["rdkit", "numpy", "numba", "rich", "typer", "networkx", "tqdm"],
     classifiers=[
         "Intended Audience :: Education",
         "Intended Audience :: Science/Research",

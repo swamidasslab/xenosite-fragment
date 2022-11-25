@@ -35,7 +35,10 @@ logger.setLevel(logging.INFO)
 
 DATA = os.environ.get("DATA", None)
 
-app = typer.Typer(name="fragment")
+app = typer.Typer(
+    name="fragment",
+    help="Utilities for computing molecular fragments and fragment networks.",
+)
 
 
 @ray.remote(max_calls=200, num_cpus=1)
@@ -99,7 +102,7 @@ def read_data(filename: str):
 
 
 @app.command()
-def main(
+def network(
     input: str = typer.Argument("bioactivation_dataset.csv"),
     output: str = typer.Argument("network.pkl.gz"),
     max_size: int = 12,
