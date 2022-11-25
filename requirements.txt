@@ -1,5 +1,5 @@
 typer
-tqdm
+rich
 numba
 numpy
 data-science-types
