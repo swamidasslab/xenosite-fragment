@@ -11,8 +11,6 @@ import networkx as nx
 import rdkit
 import logging
 
-logging.basicConfig(format=logging.BASIC_FORMAT)
-
 logger = logging.getLogger(__name__)
 
 

@@ -1,21 +1,41 @@
-from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
-from tqdm import tqdm  # type: ignore
+from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX, rdkit_warnings
+from tqdm.rich import tqdm  # type: ignore
 import ray
 import typer
 import ast
 import csv
 import os
+from rich.logging import RichHandler
 import os.path
 from typing import Optional
 import logging
 from rdkit import Chem
+
+
+runtime_env = {
+    "pip": ["numba", "rdkit", "networkx"],
+    "py_modules": ["xenosite"],
+    "exclude": ["*.csv", ".git", "*.ipynb", "*.gz"],
+    "eager_install": True,
+}
+
+rdkit_warnings(log=False)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[
+        RichHandler(rich_tracebacks=True, tracebacks_suppress=[typer], markup=True)
+    ],
+)
 
 logger = logging.getLogger("xenosite.fragment")
 logger.setLevel(logging.INFO)
 
 DATA = os.environ.get("DATA", None)
 
-app = typer.Typer()
+app = typer.Typer(name="fragment")
 
 
 @ray.remote(max_calls=200, num_cpus=1)
@@ -85,7 +105,7 @@ def main(
     max_size: int = 12,
     directory: Optional[str] = DATA,
     concurrent: int = 100,
-    ring: bool = False,
+    ring: bool = True,
     filter_unmarked: bool = True,
 ):
 
@@ -95,13 +115,13 @@ def main(
         input = os.path.join(directory, input)
         output = os.path.join(directory, output)
 
-    logger.info(f" reading data from {input}")
+    logger.info(f"[bold blue]reading {input}[/bold blue]")
     data = read_data(input)
     result = NetworkClass(max_size=max_size)
 
-    logger.info(f" building network")
+    logger.info(f"[bold blue]building network[/bold blue]")
 
-    ray.init(address="auto", runtime_env=runtime_env)
+    ray.init(runtime_env=runtime_env)
 
     for frag_graph in ray_apply(
         data,
@@ -114,7 +134,7 @@ def main(
 
     if filter_unmarked:
 
-        logger.info(f" filtering unmarked fragments")
+        logger.info(f"[bold blue]filtering unmarked fragments[/bold blue]")
         unmarked = [
             frag
             for frag in result.network
@@ -122,16 +142,8 @@ def main(
         ]
         result.network.remove_nodes_from(unmarked)
 
-    logger.info(f" saving network to {output}")
+    logger.info(f"[bold blue]saving network to {output}[/bold blue]")
     result.save(output)
-
-
-runtime_env = {
-    "pip": ["numba", "rdkit", "networkx"],
-    "py_modules": ["xenosite"],
-    "exclude": ["*.csv", ".git", "*.ipynb", "*.gz"],
-    "eager_install": True,
-}
 
 
 if __name__ == "__main__":

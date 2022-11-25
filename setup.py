@@ -31,6 +31,10 @@ setup(
     author="S. Joshua Swamidass",
     author_email="swamidass@wustl.edu",
     packages=["xenosite/fragment"],
+    entry_points={
+        "console_scripts": ["xenosite-fragment=xenosite.fragment.__main__:app"],
+        "xenosite-cli": ["xenosite-fragment=xenosite.fragment.__main__:app"],
+    },
     install_requires=["rdkit", "numpy", "numba"],
     classifiers=[
         "Intended Audience :: Education",
