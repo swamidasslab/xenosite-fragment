@@ -16,8 +16,67 @@ logger = logging.getLogger(__name__)
 
 class FragmentNetwork:
     max_size: int = 10
-    agg_attr = ["count", "marked_count", "marked_ids", "exp", "obs", "n"]
-    _version: int = 1
+    agg_attr: list[str] = [
+        "count",
+        "marked_count",
+        "marked_ids",
+        "n_mol",
+        "n_atom",
+        "n_mark",
+        "n_cover",
+        "n_mark_cover",
+        "exp",
+        "obs",
+    ]
+    _version: int = 2
+
+    def _stats(self, mol: Graph, ids: list[list[int]], marked: set[int]):
+
+        amarked = np.array(list(marked))[None, None, :]
+
+        # normalized count of marked ids by position in fragment
+        marked_ids = (np.array(ids)[:, :, None] == amarked).sum(axis=0).sum(axis=1)
+        marked_ids = np.where(marked_ids > 0, 1, 0)  # type: ignore
+
+        set_ids = [set(i) for i in ids]
+
+        size = len(set_ids[0])
+
+        covered = reduce(lambda x, y: x | y, set_ids)
+
+        marked_count = (
+            len(
+                reduce(
+                    lambda x, y: x | y,
+                    [i for i in set_ids if marked & i],
+                    set(),
+                )
+            )
+            / size
+        )
+
+        # exp = probability of fragment overlapping with at least one marked atom
+        # given: size of molecule, number of atoms matching fragment, number of marked atoms
+        exp = 1 - hypergeom.cdf(0, mol.n, int(len(covered)), len(marked))
+        obs = 1 if marked_count else 0
+
+        out = {
+            "count": len(covered) / size,
+            "marked_count": marked_count,
+            "marked_ids": marked_ids,
+            "n_mol": 1,
+            "n_atom": mol.n,
+            "n_mark": len(marked),
+            "n_cover": len(covered),
+            "n_mark_cover": len(covered & marked),
+            "exp": exp,
+            "obs": obs,
+        }
+
+        if not self.agg_attr:
+            self.agg_attr = list(out)
+
+        return out
 
     def __init__(
         self,
@@ -57,44 +116,10 @@ class FragmentNetwork:
             frag2reordering[frag].append(serial.reordering)
             # frag2ids[frag].append(ids)
 
-        amarked = np.array(list(marked))[None, None, :]
-
         for frag, ids in frag2reordering.items():
+            stats = self._stats(mol, ids, marked)
 
-            # normalized count of marked ids by position in fragment
-            marked_ids = (np.array(ids)[:, :, None] == amarked).sum(axis=0).sum(axis=1)
-            marked_ids = np.where(marked_ids > 0, 1, 0)  # type: ignore
-
-            ids = [set(i) for i in ids]
-            size = len(ids[0])
-            count = len(reduce(lambda x, y: x | y, ids)) / size
-
-            marked_count = (
-                len(
-                    reduce(
-                        lambda x, y: x | y,
-                        [i for i in ids if marked & i],
-                        set(),
-                    )
-                )
-                / size
-            )
-
-            # exp = probability of fragment overlapping with at least one marked atom
-            # given: size of molecule, number of atoms matching fragment, number of marked atoms
-            exp = 1 - hypergeom.cdf(0, mol.n, int(count * size), len(marked))
-            obs = 1 if marked_count else 0
-            n = 1
-
-            network.add_node(
-                frag,
-                count=count,
-                marked_count=marked_count,
-                marked_ids=marked_ids,
-                n=n,
-                exp=exp,
-                obs=obs,
-            )
+            network.add_node(frag, **stats)
 
         for u, v in id_network.edges:
             network.add_edge(id_network.nodes[u]["frag"], id_network.nodes[v]["frag"])
@@ -105,20 +130,10 @@ class FragmentNetwork:
         import pandas as pd
 
         df = pd.DataFrame.from_dict(
-            [
-                {
-                    "frag": frag,
-                    "count": self.network.nodes[frag]["count"],
-                    "count_marked": self.network.nodes[frag]["marked_count"],
-                    "marked_ids": self.network.nodes[frag]["marked_ids"],
-                    "size": len(self.network.nodes[frag]["marked_ids"]),
-                    "n": self.network.nodes[frag]["n"],
-                    "exp": self.network.nodes[frag]["exp"],
-                    "obs": self.network.nodes[frag]["obs"],
-                }
-                for frag in self.network
-            ]  # type: ignore
+            [dict(frag=frag, **self.network.nodes[frag]) for frag in self.network]  # type: ignore
         )
+
+        df["size"] = df["n_cover"] / df["count"]
         return df.set_index("frag")
 
     def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:

@@ -1,6 +1,5 @@
 from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX, rdkit_warnings
 
-# from tqdm.rich import tqdm  # type: ignore
 import rich.progress
 import rich.panel
 from rich import print
@@ -19,7 +18,7 @@ from enum import Enum
 
 
 runtime_env = {
-    "pip": ["numba", "rdkit", "networkx"],
+    "pip": ["numba", "rdkit", "networkx", "rich"],
     "py_modules": ["xenosite"],
     "exclude": ["*.csv", ".git", "*.ipynb", "*.gz"],
     "eager_install": True,
@@ -95,7 +94,9 @@ def network(
 
     logger.info(f"[bold blue]building network[/bold blue]")
 
-    ray.init(runtime_env=runtime_env)
+    ray.init(
+        runtime_env=runtime_env  # , configure_logging=True, logging_level=logging.WARN
+    )
 
     result = NetworkClass(max_size=max_size)
 
