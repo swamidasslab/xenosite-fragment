@@ -170,7 +170,6 @@ def test_ring_net_ex(
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence_fragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
-    assume(smiles != rsmiles)
 
     F = fragment_view(RingFragmentNetworkX(smiles, max_size=5))
     rF = fragment_view(RingFragmentNetworkX(rsmiles, max_size=5))
@@ -189,7 +188,6 @@ def test_order_independence_fragnetwork(smiles_pair):
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence_ringfragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
-    assume(smiles != rsmiles)
 
     F = fragment_view(RingFragmentNetworkX(smiles, max_size=5))
     rF = fragment_view(RingFragmentNetworkX(rsmiles, max_size=5))

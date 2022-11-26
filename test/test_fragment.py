@@ -12,6 +12,4 @@ def test_many_rings():
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence(smiles_pair):
     smiles, rsmiles = smiles_pair
-    assume(smiles != rsmiles)
-
     assert Fragment(smiles).canonical().string == Fragment(rsmiles).canonical().string
