@@ -174,9 +174,6 @@ def test_order_independence_fragnetwork(smiles_pair):
     F = fragment_view(RingFragmentNetworkX(smiles, max_size=5))
     rF = fragment_view(RingFragmentNetworkX(rsmiles, max_size=5))
 
-    F = nx.subgraph_view(F, filter_node=lambda x: isinstance(x, str))  # type: ignore
-    rF = nx.subgraph_view(rF, filter_node=lambda x: isinstance(x, str))  # type: ignore
-
     assert set(F) == set(rF)
     assert set(F.edges) == set(rF.edges)
 
