@@ -14,6 +14,13 @@ def to_primes(x) -> tuple[numba.uint64[:], numba.uint32]:  # type: ignore
 
 
 @njit(cache=True)
+def to_range(x) -> numba.uint64[:]:  # type: ignore
+    u = np.unique(x)
+    d = {v: n for n, v in enumerate(sorted(u))}
+    return np.array([d[v] for v in x]), len(u)
+
+
+@njit(cache=True)
 def collect_product(
     v: numba.uint64[:], e1: numba.uint32[:], e2: numba.uint32[:]  # type: ignore
 ) -> numba.uint64[:]:  # type: ignore
@@ -42,7 +49,9 @@ def _morgan(v, e1: numba.uint32[:], e2: numba.uint32[:]) -> numba.uint64[:]:  # 
                 return p
 
 
-def morgan(v: Union[Sequence,np.ndarray], e1: Sequence[np.uint32], e2: Sequence[np.uint32]) -> np.ndarray[np.uint64]:
+def morgan(
+    v: Union[Sequence, np.ndarray], e1: Sequence[np.uint32], e2: Sequence[np.uint32]
+) -> np.ndarray[np.uint64]:
     v = np.asarray(v)  # type: ignore
     e1 = np.asarray(e1, dtype=np.uint32)  # type: ignore
     e2 = np.asarray(e2, dtype=np.uint32)  # type: ignore

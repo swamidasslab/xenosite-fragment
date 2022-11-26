@@ -2,6 +2,7 @@ from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
 from hypothesis import strategies as st, given, assume, settings
 from test.util import random_smiles_pair
 import networkx as nx
+import pytest
 
 
 def fragment_data(N: FragmentNetworkX) -> dict[str, dict]:
@@ -12,123 +13,157 @@ def fragment_view(N: FragmentNetworkX) -> nx.DiGraph:
     return nx.subgraph_view(N.network, filter_node=lambda x: isinstance(x, str))  # type: ignore
 
 
-def test_propane():
-    F = FragmentNetworkX("CCC")
+@pytest.mark.parametrize(
+    "smiles, frags, frag_data",
+    ids=["propane", "cyclopropane", "epoxide", "hexane"],
+    argvalues=[
+        (
+            "CCC",
+            {"C", "C-C", "C-C-C"},
+            {
+                "C": {"count": 3},
+                "C-C": {"count": 3 / 2},
+                "C-C-C": {"count": 1},
+            },
+        ),
+        (
+            "C1CC1",
+            {"C", "C-C", "C1-C-C-1"},
+            {
+                "C": {
+                    "count": 3,
+                    "marked_count": 1,
+                },
+                "C-C": {
+                    "count": 3 / 2,
+                    "marked_count": 3 / 2,
+                },
+                "C1-C-C-1": {
+                    "count": 1,
+                    "marked_count": 1,
+                },
+            },
+        ),
+        (
+            "C1OC1",
+            {"C", "C-C", "C1-C-O-1", "C-O", "O"},
+            {
+                "C": {"count": 2},
+                "C-C": {"count": 1},
+                "C1-C-O-1": {"count": 1},
+                "C-O": {"count": 3 / 2},
+                "O": {"count": 1},
+            },
+        ),
+        (
+            "C1CCCCC1",
+            {"C", "C-C", "C-C-C", "C-C-C-C", "C-C-C-C-C", "C1-C-C-C-C-C-1"},
+            {
+                "C": {
+                    "count": 6,
+                    "marked_count": 1,
+                },
+                "C-C": {
+                    "count": 3,
+                    "marked_count": 3 / 2,
+                },
+                "C-C-C": {
+                    "count": 2,
+                    "marked_count": 5 / 3,
+                },
+                "C-C-C-C": {
+                    "count": 6 / 4,
+                    "marked_count": 6 / 4,
+                },
+                "C-C-C-C-C": {
+                    "count": 6 / 5,
+                    "marked_count": 6 / 5,
+                },
+                "C1-C-C-C-C-C-1": {
+                    "count": 1,
+                    "marked_count": 1,
+                },
+            },
+        ),
+    ],
+)
+def test_net_ex(
+    smiles: str,
+    frags: set[str],
+    frag_data: dict[str, dict[str, float]],
+):
+    F = FragmentNetworkX(smiles, {0})
+    assert nx.is_directed_acyclic_graph(F.network)
 
-    nodes = fragment_data(F)
+    data = fragment_data(F)
 
-    assert set(nodes) == {"C", "C-C", "C-C-C"}
+    assert set(data) == frags
 
-    assert nodes["C"]["count"] == 3
-    assert nodes["C-C"]["count"] == 3 / 2
-    assert nodes["C-C-C"]["count"] == 1
-
-
-def test_propane_ring():
-    F = RingFragmentNetworkX("CCC")
-
-    nodes = fragment_data(F)
-
-    assert set(nodes) == {"C", "C-C", "C-C-C"}
-
-    assert nodes["C"]["count"] == 3
-    assert nodes["C-C"]["count"] == 3 / 2
-    assert nodes["C-C-C"]["count"] == 1
-
-
-@given(st.integers(max_value=2, min_value=0))
-def test_cyclopropane(rid):
-    F = FragmentNetworkX("C1CC1", {rid})
-
-    nodes = fragment_data(F)
-
-    assert set(nodes) == {"C", "C-C", "C1-C-C-1"}
-
-    assert nodes["C"]["count"] == 3
-    assert nodes["C-C"]["count"] == 3 / 2
-    assert nodes["C1-C-C-1"]["count"] == 1
-
-    assert nodes["C"]["marked_count"] == 1
-    assert nodes["C-C"]["marked_count"] == 3 / 2
-    assert nodes["C1-C-C-1"]["marked_count"] == 1
-
-
-@given(st.integers(max_value=2, min_value=0))
-def test_cyclopropane_ring(rid):
-    F = RingFragmentNetworkX("C1CC1", {rid})
-
-    nodes = fragment_data(F)
-
-    assert set(nodes) == {"C1-C-C-1"}
-
-    assert nodes["C1-C-C-1"]["count"] == 1
-    assert nodes["C1-C-C-1"]["marked_count"] == 1
-
-
-def test_epoxide():
-    F = FragmentNetworkX("C1OC1")
-
-    nodes = fragment_data(F)
-
-    assert set(nodes) == {"C", "C-C", "C1-C-O-1", "C-O", "O"}
-
-    assert nodes["C"]["count"] == 2
-    assert nodes["C-C"]["count"] == 1
-    assert nodes["C1-C-O-1"]["count"] == 1
-    assert nodes["C-O"]["count"] == 3 / 2
-    assert nodes["O"]["count"] == 1
-
-
-def test_epoxide_ring():
-    F = RingFragmentNetworkX("C1OC1")
-
-    nodes = fragment_data(F)
-
-    assert set(nodes) == {"C1-C-O-1"}
-
-    assert nodes["C1-C-O-1"]["count"] == 1
-
-
-@given(st.integers(max_value=5, min_value=0))
-def test_hexane(rid):
-    F = FragmentNetworkX("C1CCCCC1", {rid})
-
-    nodes = fragment_data(F)
-
-    assert set(nodes) == {
-        "C",
-        "C-C",
-        "C-C-C",
-        "C-C-C-C",
-        "C-C-C-C-C",
-        "C1-C-C-C-C-C-1",
-    }
-
-    assert nodes["C"]["count"] == 6
-    assert nodes["C-C"]["count"] == 3
-    assert nodes["C-C-C"]["count"] == 2
-    assert nodes["C-C-C-C"]["count"] == 6 / 4
-    assert nodes["C-C-C-C-C"]["count"] == 6 / 5
-    assert nodes["C1-C-C-C-C-C-1"]["count"] == 1
-
-    assert nodes["C"]["marked_count"] == 1
-    assert nodes["C-C"]["marked_count"] == 3 / 2
-    assert nodes["C-C-C"]["marked_count"] == 5 / 3
-    assert nodes["C-C-C-C"]["marked_count"] == 6 / 4
-    assert nodes["C-C-C-C-C"]["marked_count"] == 6 / 5
-    assert nodes["C1-C-C-C-C-C-1"]["marked_count"] == 1
+    for f in frag_data:
+        for k in frag_data[f]:
+            assert frag_data[f][k] == data[f][k]
 
 
-@given(st.integers(max_value=5, min_value=0))
-def test_hexane_ring(rid):
-    F = RingFragmentNetworkX("C1CCCCC1", {rid})
+@pytest.mark.parametrize(
+    "smiles, frags, frag_data",
+    ids=["propane", "cyclopropane", "epoxide", "hexane"],
+    argvalues=[
+        (
+            "CCC",
+            {"C", "C-C", "C-C-C"},
+            {
+                "C": {"count": 3},
+                "C-C": {"count": 3 / 2},
+                "C-C-C": {"count": 1},
+            },
+        ),
+        (
+            "C1CC1",
+            {"C1-C-C-1"},
+            {
+                "C1-C-C-1": {
+                    "count": 1,
+                    "marked_count": 1,
+                },
+            },
+        ),
+        (
+            "C1OC1",
+            {"C1-C-O-1"},
+            {
+                "C1-C-O-1": {
+                    "count": 1,
+                    "marked_count": 1,
+                },
+            },
+        ),
+        (
+            "C1CCCCC1",
+            {"C1-C-C-C-C-C-1"},
+            {
+                "C1-C-C-C-C-C-1": {
+                    "count": 1,
+                    "marked_count": 1,
+                },
+            },
+        ),
+    ],
+)
+def test_ring_net_ex(
+    smiles: str,
+    frags: set[str],
+    frag_data: dict[str, dict[str, float]],
+):
+    F = RingFragmentNetworkX(smiles, {0})
+    assert nx.is_directed_acyclic_graph(F.network)
 
-    nodes = fragment_data(F)
+    data = fragment_data(F)
 
-    assert set(nodes) == {"C1-C-C-C-C-C-1"}
+    assert set(data) == frags
 
-    assert nodes["C1-C-C-C-C-C-1"]["count"] == 1
-    assert nodes["C1-C-C-C-C-C-1"]["marked_count"] == 1
+    for f in frag_data:
+        for k in frag_data[f]:
+            assert frag_data[f][k] == data[f][k]
 
 
 @settings(max_examples=20)
