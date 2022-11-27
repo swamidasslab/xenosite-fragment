@@ -88,7 +88,7 @@ class FragmentNetwork:
                 yield n[0]
 
     def to_pandas(self):
-        df = self.stats.pack()
+        df = self.stats.to_pandas()
         df["size"] = df["n_cover"] / df["count"]
         return df
 

@@ -4,19 +4,21 @@ import numpy as np
 from functools import reduce
 from scipy.stats import hypergeom
 import pandas as pd
+from typing import Optional
 
 
 class FragmentStatistics:
     def __init__(self):
-        self._stats = defaultdict(list)
-        self.seen = set()
+        self._stats: dict = defaultdict(list)
+        self._lookup: dict[str, int] = {}
 
-    def add(self, frag: str, ids: list[list[int]], marked: set[int], mol_atoms: int):
-        assert frag not in self.seen
+    def add(
+        self, frag: str, ids: list[list[int]], marked: set[int], mol_atoms: int
+    ) -> None:
+        assert frag not in self._lookup
+        assert self._stats is not None
 
-        self.seen.add(frag)
-
-        S = self._stats
+        S = dict()
 
         amarked = np.array(list(marked))[None, None, :]
 
@@ -46,32 +48,45 @@ class FragmentStatistics:
         exp = 1 - hypergeom.cdf(0, mol_atoms, int(len(covered)), len(marked))
         obs = 1 if marked_count else 0
 
-        S["frag"].append(frag)
-        S["count"].append(len(covered) / size)
-        S["marked_count"].append(marked_count)
-        S["n_mol"].append(1)
-        S["n_atom"].append(mol_atoms)
-        S["n_mark"].append(len(marked))
-        S["n_cover"].append(len(covered))
-        S["n_mark_cover"].append(len(covered & marked))
-        S["exp"].append(exp)
-        S["obs"].append(obs)
-        S["marked_ids"].append(marked_ids)
+        S["count"] = len(covered) / size
+        S["marked_count"] = marked_count
+        S["n_mol"] = 1
+        S["n_atom"] = mol_atoms
+        S["n_mark"] = len(marked)
+        S["n_cover"] = len(covered)
+        S["n_mark_cover"] = len(covered & marked)
+        S["exp"] = exp
+        S["obs"] = obs
+        S["marked_ids"] = marked_ids
 
-        return {}
+        self.append_one(frag, **S)
 
-    def pack(self) -> pd.DataFrame:
-        if self._stats:
-            self._dataframe = pd.DataFrame(self._stats).set_index("frag")
-            self._stats = {}
+    def append_one(self, frag, **kwargs):
+        assert frag not in self._lookup
 
-        return self._dataframe
+        self._lookup[frag] = len(self._stats["frag"])
+        self._stats["frag"].append(frag)
+
+        for k in kwargs:
+            self._stats[k].append(kwargs[k])
+
+    def update_one(self, frag, **kwargs):
+        if frag in self._lookup:
+            n = self._lookup[frag]
+            for k in kwargs:
+                self._stats[k][n] = self._stats[k][n] + kwargs[k]
+        else:
+            self.append_one(frag, **kwargs)
+
+    def to_pandas(self) -> Optional[pd.DataFrame]:
+        return pd.DataFrame(self._stats).set_index("frag")
 
     def update(self, other: "FragmentStatistics"):
-        other_df = other.pack()
-        self_df = self.pack()
+        other_stats = list(other._stats.items())
 
-        left, right = self_df.align(other_df, join="outer", fill_value=0)
+        keys = [x[0] for x in other_stats]
+        lists = [x[1] for x in other_stats]
 
-        self._dataframe = left + right  # type: ignore
-        return self._dataframe
+        for data in zip(*lists):
+            S = dict(zip(keys, data))
+            self.update_one(**S)
