@@ -18,7 +18,7 @@ from enum import Enum
 
 
 runtime_env = {
-    "pip": ["numba", "rdkit", "networkx", "rich"],
+    "pip": ["numba", "rdkit", "networkx", "rich", "pandas"],
     "py_modules": ["xenosite"],
     "exclude": ["*.csv", ".git", "*.ipynb", "*.gz"],
     "eager_install": True,
