@@ -72,6 +72,7 @@ def network(
         help="Directory as base for INPUT and OUTPUT paths.",
     ),
     concurrent: int = typer.Option(100, help="Maximum number of inflight jobs."),
+    verbose: int = typer.Option(0, "--verbose", "-v", count=True),
 ):
 
     NetworkClass = (
@@ -85,7 +86,7 @@ def network(
         output = directory / output
 
     logger.info(f"[bold blue]reading {input}[/bold blue]")
-    data = read_data(input)
+    
 
     if output.exists():
         logger.warning(
@@ -94,10 +95,18 @@ def network(
 
     logger.info(f"[bold blue]building network[/bold blue]")
 
-    ray.init(
-        runtime_env=runtime_env  # , configure_logging=True, logging_level=logging.WARN
-    )
+    ray_kwargs = dict(runtime_env=runtime_env)
 
+    if not verbose:
+      ray_kwargs.update(dict(
+        configure_logging=True,
+        logging_level=logging.WARN,
+        log_to_driver=False
+      ))  # type: ignore
+
+    ray.init(**ray_kwargs)
+
+    data = read_data(input)
     result = NetworkClass(max_size=max_size)
 
     for frag_graph in ray_apply_batched(
@@ -180,12 +189,14 @@ def ray_apply_batched(
     ready = []
 
     with rich.progress.Progress(
-        rich.progress.SpinnerColumn(),
-        *rich.progress.Progress.get_default_columns(),
-        rich.progress.TimeElapsedColumn(),
+        rich.progress.TextColumn("[progress.description]{task.description}"),
+        rich.progress.BarColumn(),
         rich.progress.MofNCompleteColumn(),
+        rich.progress.TaskProgressColumn(),
+        rich.progress.TimeRemainingColumn(),
+        rich.progress.TimeElapsedColumn(),
     ) as pbar:
-        task = pbar.add_task("Building", total=len(seq))
+        task = pbar.add_task("Building...", total=len(seq))
 
         for chunk in chunks(seq, chunk_size):
             if len(result_refs) >= concurrent:
