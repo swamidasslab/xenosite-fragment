@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, Generator
 from .graph import Graph, neighbors
 from .chem import Fragment
 from collections import defaultdict
@@ -10,73 +10,16 @@ import pickle
 import networkx as nx
 import rdkit
 import logging
+from .stats import FragmentStatistics
+import rdkit
+from xenosite.fragment.chem import MolToSmartsGraph
 
 logger = logging.getLogger(__name__)
 
 
 class FragmentNetwork:
     max_size: int = 10
-    agg_attr: list[str] = [
-        "count",
-        "marked_count",
-        "marked_ids",
-        "n_mol",
-        "n_atom",
-        "n_mark",
-        "n_cover",
-        "n_mark_cover",
-        "exp",
-        "obs",
-    ]
-    _version: int = 2
-
-    def _stats(self, mol: Graph, ids: list[list[int]], marked: set[int]):
-
-        amarked = np.array(list(marked))[None, None, :]
-
-        # normalized count of marked ids by position in fragment
-        marked_ids = (np.array(ids)[:, :, None] == amarked).sum(axis=0).sum(axis=1)
-        marked_ids = np.where(marked_ids > 0, 1, 0)  # type: ignore
-
-        set_ids = [set(i) for i in ids]
-
-        size = len(set_ids[0])
-
-        covered = reduce(lambda x, y: x | y, set_ids)
-
-        marked_count = (
-            len(
-                reduce(
-                    lambda x, y: x | y,
-                    [i for i in set_ids if marked & i],
-                    set(),
-                )
-            )
-            / size
-        )
-
-        # exp = probability of fragment overlapping with at least one marked atom
-        # given: size of molecule, number of atoms matching fragment, number of marked atoms
-        exp = 1 - hypergeom.cdf(0, mol.n, int(len(covered)), len(marked))
-        obs = 1 if marked_count else 0
-
-        out = {
-            "count": len(covered) / size,
-            "marked_count": marked_count,
-            "marked_ids": marked_ids,
-            "n_mol": 1,
-            "n_atom": mol.n,
-            "n_mark": len(marked),
-            "n_cover": len(covered),
-            "n_mark_cover": len(covered & marked),
-            "exp": exp,
-            "obs": obs,
-        }
-
-        if not self.agg_attr:
-            self.agg_attr = list(out)
-
-        return out
+    _version: int = 3
 
     def __init__(
         self,
@@ -85,6 +28,7 @@ class FragmentNetwork:
         max_size: Optional[int] = None,
     ):
         self.version: int = self._version
+        self.stats = FragmentStatistics()
 
         if not smiles:
             self.network = nx.DiGraph()
@@ -117,9 +61,8 @@ class FragmentNetwork:
             # frag2ids[frag].append(ids)
 
         for frag, ids in frag2reordering.items():
-            stats = self._stats(mol, ids, marked)
-
-            network.add_node(frag, **stats)
+            self.stats.add(frag, ids, marked, mol.n)
+            network.add_node(frag)
 
         for u, v in id_network.edges:
             fu = id_network.nodes[u]["frag"]
@@ -134,19 +77,20 @@ class FragmentNetwork:
 
         self.network = network
 
+    def contains_fragment(self, frag: str) -> Generator[str, None, None]:
+        try:
+            frag = Fragment(frag).canonical().string
+        except:
+            pass
+
+        for n in nx.dfs_predecessors(self.network.reverse(False), frag):
+            if isinstance(n, tuple):
+                yield n[0]
+
     def to_pandas(self):
-        import pandas as pd
-
-        df = pd.DataFrame.from_dict(
-            [
-                dict(frag=frag, **self.network.nodes[frag])
-                for frag in self.network
-                if isinstance(frag, str)
-            ]  # type: ignore
-        )
-
+        df = self.stats.pack()
         df["size"] = df["n_cover"] / df["count"]
-        return df.set_index("frag")
+        return df
 
     def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:
         return ids
@@ -178,21 +122,13 @@ class FragmentNetwork:
         return network
 
     def update(self, other: "FragmentNetwork"):
-        new_frags = []
+        self.stats.update(other.stats)
 
         for frag in other.network.nodes:
-            if frag in self.network and isinstance(frag, str):
-                for att in self.agg_attr:
-                    self.network.nodes[frag][att] = (
-                        self.network.nodes[frag][att] + other.network.nodes[frag][att]
-                    )
-            else:
-                new_frags.append(frag)
-
-        for frag in new_frags:
-            self.network.add_node(frag, **other.network.nodes[frag])
-            for child in other.network[frag]:
-                self.network.add_edge(frag, child)
+            if frag not in self.network.nodes:
+                self.network.add_node(frag)
+                for child in other.network[frag]:
+                    self.network.add_edge(frag, child)
 
 
 def subgraphs_gen(
@@ -280,11 +216,6 @@ def subgraph_network_ids(
                 network.add_edge(parent, child)
 
     return network
-
-
-import rdkit
-
-from xenosite.fragment.chem import MolToSmartsGraph
 
 
 class RingFragmentNetwork(FragmentNetwork):

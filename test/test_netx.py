@@ -3,10 +3,11 @@ from hypothesis import strategies as st, given, assume, settings
 from test.util import random_smiles_pair
 import networkx as nx
 import pytest
+import pandas as pd
 
 
-def fragment_data(N: FragmentNetworkX) -> dict[str, dict]:
-    return {k: v for k, v in N.network.nodes.items() if isinstance(k, str)}
+def fragment_data(N: FragmentNetworkX) -> pd.DataFrame:
+    return N.to_pandas()
 
 
 def fragment_view(N: FragmentNetworkX) -> nx.DiGraph:
@@ -97,11 +98,11 @@ def test_net_ex(
 
     data = fragment_data(F)
 
-    assert set(data) == frags
+    assert set(data.index) == frags
 
     for f in frag_data:
         for k in frag_data[f]:
-            assert frag_data[f][k] == data[f][k]
+            assert frag_data[f][k] == data.loc[f][k]
 
 
 @pytest.mark.parametrize(
@@ -159,11 +160,11 @@ def test_ring_net_ex(
 
     data = fragment_data(F)
 
-    assert set(data) == frags
+    assert set(data.index) == frags
 
     for f in frag_data:
         for k in frag_data[f]:
-            assert frag_data[f][k] == data[f][k]
+            assert frag_data[f][k] == data.loc[f][k]
 
 
 @settings(max_examples=20)
@@ -171,14 +172,20 @@ def test_ring_net_ex(
 def test_order_independence_fragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
 
-    F = fragment_view(RingFragmentNetworkX(smiles, max_size=5))
-    rF = fragment_view(RingFragmentNetworkX(rsmiles, max_size=5))
+    F = FragmentNetworkX(smiles, max_size=5)
+    rF = FragmentNetworkX(rsmiles, max_size=5)
+
+    F_pd = F.to_pandas()
+    rF_pd = rF.to_pandas()
+
+    F = fragment_view(F)
+    rF = fragment_view(rF)
 
     assert set(F) == set(rF)
     assert set(F.edges) == set(rF.edges)
 
     for frag in F:
-        assert F.nodes[frag]["count"] == rF.nodes[frag]["count"]
+        assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
 
 
 @settings(max_examples=20)
@@ -186,11 +193,17 @@ def test_order_independence_fragnetwork(smiles_pair):
 def test_order_independence_ringfragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
 
-    F = fragment_view(RingFragmentNetworkX(smiles, max_size=5))
-    rF = fragment_view(RingFragmentNetworkX(rsmiles, max_size=5))
+    F = RingFragmentNetworkX(smiles, max_size=5)
+    rF = RingFragmentNetworkX(rsmiles, max_size=5)
+
+    F_pd = F.to_pandas()
+    rF_pd = rF.to_pandas()
+
+    F = fragment_view(F)
+    rF = fragment_view(rF)
 
     assert set(F) == set(rF)
     assert set(F.edges) == set(rF.edges)
 
     for frag in F:
-        assert F.nodes[frag]["count"] == rF.nodes[frag]["count"]
+        assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
