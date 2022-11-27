@@ -1,6 +1,6 @@
 from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
 from hypothesis import strategies as st, given, assume, settings
-from test.util import random_smiles_pair
+from .util import random_smiles_pair
 import networkx as nx
 import pytest
 import pandas as pd
@@ -167,7 +167,7 @@ def test_ring_net_ex(
             assert frag_data[f][k] == data.loc[f][k]
 
 
-@settings(max_examples=20)
+@settings(max_examples=20, deadline=None)
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence_fragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
@@ -188,7 +188,7 @@ def test_order_independence_fragnetwork(smiles_pair):
         assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
 
 
-@settings(max_examples=20)
+@settings(max_examples=20, deadline=None)
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence_ringfragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair

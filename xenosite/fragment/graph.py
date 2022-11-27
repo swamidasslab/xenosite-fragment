@@ -60,30 +60,6 @@ class DirectedGraph(BaseGraph):
     pass
 
 
-class Index(dict):
-    __slots__ = ["invert"]
-
-    def __init__(self, invertList: Optional[list] = None):
-        super().__init__()
-        self.invert = invertList or []
-
-    # def __setitem__(self, key, value):
-    #   raise RuntimeError("Index does not support item setting.")
-
-    def __getitem__(self, key) -> int:
-        try:
-            return super().__getitem__(key)
-        except KeyError:
-            n = len(self.invert)
-            super().__setitem__(key, n)
-            self.invert.append(key)
-            return n
-
-    def update(self, other) -> "Index":
-        _ = [self[k] for k in other]
-        return self
-
-
 class Graph(BaseGraph):  # Undirected Graph
     def __repr__(self):
         return f"Graph(n={self.n},\n\tedge={self.edge},\n\tnlabel={self.nlabel},\n\telabel={self.elabel})"
@@ -171,6 +147,9 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
     N = neighbors(G)
     start = 0
 
+    if G.n <= 1:
+        return []
+
     if canonize:
         M = G.morgan()
         start = int(np.argmin(M))
@@ -190,15 +169,3 @@ def neighbors(G: Graph) -> dict[int, list[int]]:
         N[i].append(j)
         N[j].append(i)
     return N
-
-
-def ring_graph(n: int) -> Graph:
-    e1 = np.arange(n)
-    e2 = np.roll(e1, 1)  # type: ignore
-    return Graph(n=n, edge=(e1, e2), nlabel=["*"] * n, elabel=[""] * n)  # type: ignore
-
-
-def star_graph(n: int) -> Graph:
-    e1 = np.zeros(n - 1)
-    e2 = np.arange(n - 1) + 1  # type: ignore
-    return Graph(n=n, edge=(e1, e2), nlabel=["*"] * n, elabel=[""] * (n - 1))  # type: ignore

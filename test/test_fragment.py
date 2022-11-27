@@ -13,3 +13,18 @@ def test_many_rings():
 def test_order_independence(smiles_pair):
     smiles, rsmiles = smiles_pair
     assert Fragment(smiles).canonical().string == Fragment(rsmiles).canonical().string
+
+
+def test_boundary_1atom():
+    F = Fragment("C")
+    assert F.canonical().string == "C"
+
+
+def test_boundary_0atom():
+    F = Fragment("")
+    assert F.canonical().string == ""
+
+
+def test_boundary_two_components():
+    with pytest.raises(ValueError):
+      F = Fragment("C.C")
