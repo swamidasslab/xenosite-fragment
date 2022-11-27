@@ -1,3 +1,4 @@
+import contextlib
 import numpy as np
 import pandas as pd
 from typing import Optional, Union, Sequence, Generator
@@ -79,11 +80,9 @@ class FragmentNetwork:
         self.network = network
 
     def contains_fragment(self, frag: str) -> Generator[str, None, None]:
-        try:
+        with contextlib.suppress(Exception):
             frag = Fragment(frag).canonical().string
-        except:
-            pass
-
+            
         for n in nx.dfs_predecessors(self.network.reverse(False), frag):
             if isinstance(n, tuple):
                 yield n[0]
@@ -263,9 +262,7 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
 
     # ring-ring edges
     for i in range(len(rings)):
-        for j in range(i + 1, len(rings)):
-            if ring_N[i] & rings_set[j]:
-                edges.append((i, j))
+        edges.extend((i, j) for j in range(i + 1, len(rings)) if ring_N[i] & rings_set[j])
 
     non_ring_atoms_set = set(non_ring_atoms)
 
@@ -276,8 +273,7 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
 
     # ring-atom edges
     for i in range(len(rings)):
-        for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set:
-            edges.append((i, mapping_inverted[j]))
+        edges.extend((i, mapping_inverted[j]) for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set)
 
     u = [i for i, _ in edges]
     v = [j for _, j in edges]
