@@ -1,3 +1,4 @@
+pytest.ini
 coverage
 coverage.xml
 *.ipynb
