@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from typing import Optional, Union, Sequence, Generator
 from .graph import Graph, neighbors
 from .chem import Fragment
@@ -87,7 +88,7 @@ class FragmentNetwork:
             if isinstance(n, tuple):
                 yield n[0]
 
-    def to_pandas(self):
+    def to_pandas(self) -> pd.DataFrame:
         df = self.stats.to_pandas()
         df["size"] = df["n_cover"] / df["count"]
         return df

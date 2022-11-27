@@ -78,7 +78,7 @@ class FragmentStatistics:
         else:
             self.append_one(frag, **kwargs)
 
-    def to_pandas(self) -> Optional[pd.DataFrame]:
+    def to_pandas(self) -> pd.DataFrame:
         return pd.DataFrame(self._stats).set_index("frag")
 
     def update(self, other: "FragmentStatistics"):
