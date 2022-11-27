@@ -89,7 +89,7 @@ class FragmentNetwork:
 
     def to_pandas(self) -> pd.DataFrame:
         df = self.stats.to_pandas()
-        df["size"] = df["n_cover"] / df["count"]
+        df["size"] =(df["n_cover"] / df["count"]).astype(int)
         return df
 
     def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:
