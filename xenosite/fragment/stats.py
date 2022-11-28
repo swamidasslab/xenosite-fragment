@@ -67,6 +67,9 @@ class FragmentStatistics:
     def append_one(self, frag, **kwargs):
         assert frag not in self._lookup
 
+        if self._stats: assert set(kwargs) | {"frag"} == set(self._stats), \
+            "must always call FragmentStatistics.append_one with the same arguments."
+
         self._lookup[frag] = len(self._stats["frag"])
         self._stats["frag"].append(frag)
 
@@ -74,6 +77,11 @@ class FragmentStatistics:
             self._stats[k].append(kwargs[k])
 
     def update_one(self, frag, **kwargs):
+        if self._stats:
+          print(kwargs, self._stats)
+          assert set(kwargs) | {"frag"} == set(self._stats), \
+            "must always call FragmentStatistics.update_one with the same arguments."
+
         if frag in self._lookup:
             n = self._lookup[frag]
             for k in kwargs:
@@ -85,6 +93,10 @@ class FragmentStatistics:
         return pd.DataFrame(self._stats).set_index("frag")
 
     def update(self, other: "FragmentStatistics"):
+        if self._stats and other._stats:
+          assert set(other._stats) == set(self._stats), \
+             "These FragmentStatistics instance record different statistics!"
+            
         other_stats = list(other._stats.items())
 
         keys = [x[0] for x in other_stats]
