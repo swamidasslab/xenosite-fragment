@@ -28,6 +28,7 @@ class FragmentNetwork:
         smiles: Optional[str] = None,
         marked: Optional[set[int]] = None,
         max_size: Optional[int] = None,
+        include_mol_ref : bool = False,
     ):
         self.version: int = self._version
         self.stats = FragmentStatistics()
@@ -74,10 +75,11 @@ class FragmentNetwork:
             if fu != fv:
                 network.add_edge(fu, fv)
 
-        top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
-        mol_key = (smiles, "ref")  # type: ignore
 
-        nx.add_star(network, [mol_key] + top)
+        if include_mol_ref:
+          top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
+          mol_key = (smiles, "ref")  # type: ignore
+          nx.add_star(network, [mol_key] + top)
 
         self.network = network
 
