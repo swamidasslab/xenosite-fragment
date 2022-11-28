@@ -167,13 +167,22 @@ def test_ring_net_ex(
             assert frag_data[f][k] == data.loc[f][k]
 
 
-@settings(max_examples=5, deadline=None)
-@given(random_smiles_pair())  # type: ignore
-def test_order_independence_fragnetwork(smiles_pair):
+
+@settings(max_examples=15, deadline=None)
+@given(
+  random_smiles_pair(), 
+  st.booleans(),
+  st.sampled_from([RingFragmentNetworkX, RingFragmentNetworkX]),
+)  # type: ignore
+def test_order_independence_network(
+  smiles_pair, 
+  include_mol_ref, 
+  cls
+):
     smiles, rsmiles = smiles_pair
 
-    F = FragmentNetworkX(smiles, max_size=5)
-    rF = FragmentNetworkX(rsmiles, max_size=5)
+    F = cls(smiles, max_size=5, include_mol_ref=include_mol_ref)
+    rF = cls(rsmiles, max_size=5, include_mol_ref=include_mol_ref)
 
     F_pd = F.to_pandas()
     rF_pd = rF.to_pandas()
@@ -188,33 +197,12 @@ def test_order_independence_fragnetwork(smiles_pair):
         assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
 
 
-@settings(max_examples=5, deadline=None)
-@given(random_smiles_pair())  # type: ignore
-def test_order_independence_ringfragnetwork(smiles_pair):
-    smiles, rsmiles = smiles_pair
-
-    F = RingFragmentNetworkX(smiles, max_size=5)
-    rF = RingFragmentNetworkX(rsmiles, max_size=5)
-
-    F_pd = F.to_pandas()
-    rF_pd = rF.to_pandas()
-
-    F = fragment_view(F)
-    rF = fragment_view(rF)
-
-    assert set(F) == set(rF)
-    assert set(F.edges) == set(rF.edges)
-
-    for frag in F:
-        assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
-
-
 
 @settings(max_examples=5, deadline=None)
-@given(random_smiles())  # type: ignore
-def test_update1(smiles):
-    X = RingFragmentNetworkX()
-    F = RingFragmentNetworkX(smiles, max_size=5)
+@given(random_smiles(), st.booleans())  # type: ignore
+def test_update1(smiles, include_mol_ref):
+    X = RingFragmentNetworkX(max_size=5, include_mol_ref=include_mol_ref)
+    F = RingFragmentNetworkX(smiles, max_size=5, include_mol_ref=include_mol_ref)
 
     X.update(F)
 
@@ -223,14 +211,14 @@ def test_update1(smiles):
 
 
 @settings(max_examples=5, deadline=None)
-@given(random_smiles())  # type: ignore
-def test_update_twice(smiles):
+@given(random_smiles(), st.booleans())  # type: ignore
+def test_update_twice(smiles, include_mol_ref):
     X = RingFragmentNetworkX()
 
-    F = RingFragmentNetworkX(smiles, max_size=5)
+    F = RingFragmentNetworkX(smiles, max_size=5, include_mol_ref=include_mol_ref)
     X.update(F)
 
-    F = RingFragmentNetworkX(smiles, max_size=5)
+    F = RingFragmentNetworkX(smiles, max_size=5, include_mol_ref=include_mol_ref)
     X.update(F)
 
     Xpd = X.to_pandas()
@@ -241,15 +229,15 @@ def test_update_twice(smiles):
      
 
 @settings(max_examples=5, deadline=None)
-@given(random_smiles(),random_smiles())  # type: ignore
-def test_update_diff_mols(smi1, smi2):
+@given(random_smiles(),random_smiles(), st.booleans())  # type: ignore
+def test_update_diff_mols(smi1, smi2, include_mol_ref):
 
     X = RingFragmentNetworkX()
 
-    F1 = RingFragmentNetworkX(smi1, max_size=5)
+    F1 = RingFragmentNetworkX(smi1, max_size=5, include_mol_ref=include_mol_ref)
     X.update(F1)
 
-    F2 = RingFragmentNetworkX(smi2, max_size=5)
+    F2 = RingFragmentNetworkX(smi2, max_size=5, include_mol_ref=include_mol_ref)
     X.update(F2)
 
     Xpd = X.to_pandas()
