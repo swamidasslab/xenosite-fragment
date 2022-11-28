@@ -21,4 +21,4 @@ def random_smiles_pair(draw):
 def random_smiles(draw):
     seed = draw(st.integers(min_value=1e2, max_value=1e7))  # type: ignore
     smiles = draw(st.sampled_from(TEST_SMILES))
-    return Chem.MolToRandomSmilesVect(Chem.MolFromSmiles(smiles), 1, randomSeed=seed)  # type: ignore
+    return Chem.MolToRandomSmilesVect(Chem.MolFromSmiles(smiles), 1, randomSeed=seed)[0]  # type: ignore

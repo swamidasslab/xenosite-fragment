@@ -1,10 +1,10 @@
 from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
 from hypothesis import strategies as st, given, assume, settings
-from .util import random_smiles_pair
+from .util import random_smiles_pair, random_smiles
 import networkx as nx
 import pytest
 import pandas as pd
-
+import numpy as np
 
 def fragment_data(N: FragmentNetworkX) -> pd.DataFrame:
     return N.to_pandas()
@@ -167,7 +167,7 @@ def test_ring_net_ex(
             assert frag_data[f][k] == data.loc[f][k]
 
 
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence_fragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
@@ -188,7 +188,7 @@ def test_order_independence_fragnetwork(smiles_pair):
         assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
 
 
-@settings(max_examples=20, deadline=None)
+@settings(max_examples=5, deadline=None)
 @given(random_smiles_pair())  # type: ignore
 def test_order_independence_ringfragnetwork(smiles_pair):
     smiles, rsmiles = smiles_pair
@@ -207,3 +207,62 @@ def test_order_independence_ringfragnetwork(smiles_pair):
 
     for frag in F:
         assert F_pd.loc[frag]["count"] == rF_pd.loc[frag]["count"]
+
+
+
+@settings(max_examples=5, deadline=None)
+@given(random_smiles())  # type: ignore
+def test_update1(smiles):
+    X = RingFragmentNetworkX()
+    F = RingFragmentNetworkX(smiles, max_size=5)
+
+    X.update(F)
+
+    assert X.to_pandas().equals(F.to_pandas())  # type: ignore
+
+
+
+@settings(max_examples=5, deadline=None)
+@given(random_smiles())  # type: ignore
+def test_update_twice(smiles):
+    X = RingFragmentNetworkX()
+
+    F = RingFragmentNetworkX(smiles, max_size=5)
+    X.update(F)
+
+    F = RingFragmentNetworkX(smiles, max_size=5)
+    X.update(F)
+
+    Xpd = X.to_pandas()
+    Fpd = F.to_pandas() * 2
+
+    for col in ["count", "marked_count", "n_mol"]:
+      assert np.all(Xpd[col] == Fpd[col]) # type: ignore
+     
+
+@settings(max_examples=5, deadline=None)
+@given(random_smiles(),random_smiles())  # type: ignore
+def test_update_diff_mols(smi1, smi2):
+
+    X = RingFragmentNetworkX()
+
+    F1 = RingFragmentNetworkX(smi1, max_size=5)
+    X.update(F1)
+
+    F2 = RingFragmentNetworkX(smi2, max_size=5)
+    X.update(F2)
+
+    Xpd = X.to_pandas()
+
+    F1frags = set(F1.to_pandas().index) 
+    F2frags = set(F2.to_pandas().index)
+
+    assert set(Xpd.index) == F1frags | F2frags
+
+    for frag in F1frags & F2frags:
+      assert Xpd["n_mol"].loc[frag] == 2
+
+    for frag in F1frags ^ F2frags:
+      assert Xpd["n_mol"].loc[frag] == 1
+
+     
