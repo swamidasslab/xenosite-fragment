@@ -61,6 +61,9 @@ class FragmentStatistics:
 
         self.append_one(frag, **S)
 
+    def copy_from(self, other : "FragmentStatistics") -> "FragmentStatistics":
+      raise NotImplemented
+
     def append_one(self, frag, **kwargs):
         assert frag not in self._lookup
 

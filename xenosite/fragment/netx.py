@@ -62,6 +62,8 @@ class FragmentNetwork:
             frag2reordering[frag].append(serial.reordering)
             # frag2ids[frag].append(ids)
 
+        self._frag2id = frag2reordering
+
         for frag, ids in frag2reordering.items():
             self.stats.add(frag, ids, marked, mol.n)
             network.add_node(frag)
@@ -98,6 +100,52 @@ class FragmentNetwork:
     def _subgraph_network_ids(self, rdmol: rdkit.Chem.Mol, mol: Graph) -> nx.DiGraph:  # type: ignore
         return subgraph_network_ids(mol, self.max_size)
 
+    def add(self, smiles: str) -> None:
+      raise NotImplemented
+
+    def copy_stats(self, other: "FragmentNetwork") -> "FragmentNetwork":
+      #TODO change to shallow copy of self to avoid clobbering
+      self.stats = self.stats.copy_from(other.stats) 
+      return self
+
+    def molecule_shading(self, mol : str) -> np.ndarray:
+      raise NotImplemented
+      
+      N = type(self)(mol, max_size=self.max_size) # make 
+      frag2ids = N._frag2id
+
+      shade = zeros(12) 
+      for frag in N.network.nodes:
+        if not isinstance(frag, str): continue
+        if frag not in self.stats._lookup: continue
+
+        ids = frag2ids[frag]
+        n = self.stats._lookup[frag]
+        frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"]
+        for match in ids:
+          shade[match] = np.where(shade[match]> frag_shade, shade[match], frag_shade)
+
+      
+
+
+
+# How a molecule is shaded
+# def display(info):
+#   frag = info.name
+#   #frag = re.sub(":", "", frag)
+#   # frag = re.sub(r"\[nH\]", "n", frag)
+#   try:
+#     m = Chem.MolFromSmarts(frag)
+#     assert m, "Fragment did not produce mol: " + frag
+
+#     x = xenopict.Xenopict(m)
+#     x.shade(np.minimum(info["marked_ids"] / info["n_mol"], 1))
+#     return x
+#   except Exception as e:
+#     return e
+
+
+
     def save(self, filename: str):
         with gzip.GzipFile(filename, "wb") as f:
             pickle.dump(self, f)
@@ -123,6 +171,9 @@ class FragmentNetwork:
 
     def update(self, other: "FragmentNetwork"):
         self.stats.update(other.stats)
+
+        with contextlib.suppress(Exception):
+          del self._frag2id 
 
         for frag in other.network.nodes:
             if frag not in self.network.nodes:
@@ -235,7 +286,8 @@ class RingFragmentNetwork(FragmentNetwork):
 
 
 def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size=8):  # type: ignore
-    mol = mol or MolToSmartsGraph(rdmol)
+    mol = mol or MolToSmartsGraph(rdmol)  # type: ignore
+    assert mol
 
     # sort rings and remove macro-cycles larger than max_ring_size
     rings = sorted(

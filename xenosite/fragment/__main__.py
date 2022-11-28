@@ -15,12 +15,13 @@ import logging
 from rdkit import Chem
 from pathlib import Path
 from enum import Enum
-
+import pandas as pd
+from xenosite.fragment.stats import FragmentStatistics
 
 runtime_env = {
     "pip": ["numba", "rdkit", "networkx", "rich", "pandas"],
     "py_modules": ["xenosite"],
-    "exclude": ["*.csv", ".git", "*.ipynb", "*.gz"],
+    "exclude": ["*.csv", ".git", "*.ipynb", "*.gz", "coverage"],
     "eager_install": True,
 }
 
@@ -137,6 +138,91 @@ def network(
 
     logger.info(f"[bold blue]saving network to {output}[/bold blue]")
     result.save(str(output))
+
+
+
+@app.command()
+def smarts(
+    input: Path = typer.Argument(Path("bioactivation_dataset.csv")),
+    smarts: Path = typer.Argument(Path("structural_alerts.csv")),
+    output: Path = typer.Argument(Path("alerts_stats.pkl.gz")),
+    directory: Optional[Path] = typer.Option(
+        None,
+        envvar="DATA",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
+        help="Directory as base for INPUT and OUTPUT paths.",
+    ),
+    concurrent: int = typer.Option(100, help="Maximum number of inflight jobs."),
+):
+
+    rdkit_warnings(log=False)
+
+    if directory:
+        input = directory / input
+        output = directory / output
+        smarts = directory / smarts
+
+    logger.info(f"[bold blue]reading {input}[/bold blue]")
+    
+    if output.exists():
+        logger.warning(
+            f"[bold red]output file exists and will be overwritten {output}[/bold red]",
+        )
+    data = read_data(input)
+    logger.info(f"[bold blue]building network[/bold blue]")
+
+    ray.init(
+        runtime_env=runtime_env  # , configure_logging=True, logging_level=logging.WARN
+    )
+
+    smarts_alerts = pd.read_csv(str(smarts))
+
+    smarts = list(set(smarts_alerts["smarts"])) # type: ignore
+    smarts_ref = ray.put(smarts)
+
+    result = FragmentStatistics()
+
+    for smarts_stats in ray_apply_batched(
+        data,
+        lambda batch: smarts_batch.remote(batch, smarts_ref),  # type: ignore
+        concurrent=concurrent,
+        chunk_size=50
+    ):
+        result.update(smarts_stats)  # type: ignore
+        del smarts_stats
+
+
+    logger.info(f"[bold blue]saving out to {output}[/bold blue]")
+
+    import gzip
+    import pickle
+    with gzip.GzipFile(output, "wb") as f:
+      pickle.dump(result, f)
+  
+
+
+
+@ray.remote(max_calls=100, num_cpus=1)
+def smarts_batch(smiles_rids: list, smarts : Sequence[Chem.Mol]):  # type: ignore
+    result = FragmentStatistics()
+    
+    mol_smrt = [(Chem.MolFromSmarts(s), s) for s in smarts]  # type: ignore
+    for smiles, rids in smiles_rids:
+        M = Chem.MolFromSmiles(smiles)  # type: ignore
+
+        R = FragmentStatistics()
+        for (mol, smrt) in mol_smrt:
+          matches = M.GetSubstructMatches(mol)
+          if matches:
+            R.add(smrt, matches, rids, M.GetNumAtoms())
+            result.update(R)
+
+    return result, len(smiles_rids)
+
+
 
 
 @ray.remote(max_calls=100, num_cpus=1)
