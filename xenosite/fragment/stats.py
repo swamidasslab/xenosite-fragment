@@ -62,7 +62,17 @@ class FragmentStatistics:
         self.append_one(frag, **S)
 
     def copy_from(self, other : "FragmentStatistics") -> "FragmentStatistics":
-      raise NotImplemented
+      k1 = set(self._stats)
+      k2 = set(other._stats)
+
+      out = FragmentStatistics()
+
+      for k in k1 & k2:
+        n = other._lookup[k]
+        d = {k : other._stats[k][n] for k in other._stats}
+        out.append_one(**d)
+      
+      return out
 
     def append_one(self, frag, **kwargs):
         assert frag not in self._lookup
@@ -95,7 +105,7 @@ class FragmentStatistics:
     def update(self, other: "FragmentStatistics"):
         if self._stats and other._stats:
           assert set(other._stats) == set(self._stats), \
-             "These FragmentStatistics instance record different statistics!"
+             "These FragmentStatistics instances have different statistics!"
             
         other_stats = list(other._stats.items())
 
