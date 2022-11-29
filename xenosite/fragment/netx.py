@@ -18,10 +18,9 @@ from xenosite.fragment.chem import MolToSmartsGraph
 
 logger = logging.getLogger(__name__)
 
-
 class FragmentNetwork:
     max_size: int = 10
-    _version: int = 3
+    _version: int = 4
 
     def __init__(
         self,
@@ -32,6 +31,9 @@ class FragmentNetwork:
     ):
         self.version: int = self._version
         self.stats = FragmentStatistics()
+
+        if max_size:
+            self.max_size = max_size
 
         if not smiles:
             self.network = nx.DiGraph()
@@ -46,8 +48,6 @@ class FragmentNetwork:
 
         network = nx.DiGraph()
 
-        if max_size:
-            self.max_size = max_size
 
         id_network = self._subgraph_network_ids(rdmol, mol)
         frag2reordering = defaultdict(lambda: [])
@@ -102,8 +102,10 @@ class FragmentNetwork:
     def _subgraph_network_ids(self, rdmol: rdkit.Chem.Mol, mol: Graph) -> nx.DiGraph:  # type: ignore
         return subgraph_network_ids(mol, self.max_size)
 
-    def add(self, smiles: str) -> None:
-      raise NotImplemented
+    def add(self, smiles: str, **kwargs):
+      F = self.__class__(smiles, max_size=self.max_size, **kwargs)
+      self.update(F)
+
 
     def copy_stats(self, other: "FragmentNetwork") -> "FragmentNetwork":
       #TODO change to shallow copy of self to avoid clobbering
@@ -180,8 +182,8 @@ class FragmentNetwork:
         for frag in other.network.nodes:
             if frag not in self.network.nodes:
                 self.network.add_node(frag)
-                for child in other.network[frag]:
-                    self.network.add_edge(frag, child)
+            for child in other.network[frag]:
+                self.network.add_edge(frag, child)
 
 
 def subgraphs_gen(

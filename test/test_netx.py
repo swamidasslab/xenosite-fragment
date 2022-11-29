@@ -5,6 +5,7 @@ import networkx as nx
 import pytest
 import pandas as pd
 import numpy as np
+from pytest import approx
 
 def fragment_data(N: FragmentNetworkX) -> pd.DataFrame:
     return N.to_pandas()
@@ -93,7 +94,7 @@ def test_net_ex(
     frags: set[str],
     frag_data: dict[str, dict[str, float]],
 ):
-    F = FragmentNetworkX(smiles, {0})
+    F = FragmentNetworkX(smiles, {0}, include_mol_ref=True)
     assert nx.is_directed_acyclic_graph(F.network)
 
     data = fragment_data(F)
@@ -101,6 +102,9 @@ def test_net_ex(
     assert set(data.index) == frags
 
     for f in frag_data:
+
+        assert tuple(F.contains_fragment(f)) == (smiles,)
+
         for k in frag_data[f]:
             assert frag_data[f][k] == data.loc[f][k]
 
@@ -155,7 +159,7 @@ def test_ring_net_ex(
     frags: set[str],
     frag_data: dict[str, dict[str, float]],
 ):
-    F = RingFragmentNetworkX(smiles, {0})
+    F = RingFragmentNetworkX(smiles, {0}, include_mol_ref=True)
     assert nx.is_directed_acyclic_graph(F.network)
 
     data = fragment_data(F)
@@ -163,6 +167,9 @@ def test_ring_net_ex(
     assert set(data.index) == frags
 
     for f in frag_data:
+
+        assert tuple(F.contains_fragment(f)) == (smiles,)
+
         for k in frag_data[f]:
             assert frag_data[f][k] == data.loc[f][k]
 
@@ -210,6 +217,8 @@ def test_update1(smiles, include_mol_ref):
 
 
 
+
+
 @settings(max_examples=5, deadline=None)
 @given(random_smiles(), st.booleans())  # type: ignore
 def test_update_twice(smiles, include_mol_ref):
@@ -226,7 +235,7 @@ def test_update_twice(smiles, include_mol_ref):
 
     for col in ["count", "marked_count", "n_mol"]:
       assert np.all(Xpd[col] == Fpd[col]) # type: ignore
-     
+
 
 @settings(max_examples=5, deadline=None)
 @given(random_smiles(),random_smiles(), st.booleans())  # type: ignore
@@ -253,4 +262,26 @@ def test_update_diff_mols(smi1, smi2, include_mol_ref):
     for frag in F1frags ^ F2frags:
       assert Xpd["n_mol"].loc[frag] == 1
 
-     
+
+
+from icecream import ic
+@settings(max_examples=5, deadline=None)
+@given(random_smiles(), st.booleans())  # type: ignore
+def test_add(smiles, include_mol_ref):
+    X = FragmentNetworkX()
+    F = FragmentNetworkX(smiles, max_size=5, include_mol_ref=include_mol_ref)
+    X.update(F)
+
+    Y = FragmentNetworkX(max_size=5)
+    Y.add(smiles, include_mol_ref=include_mol_ref)
+
+    Xpd = X.to_pandas()
+    Ypd = Y.to_pandas() 
+
+    assert set(Xpd.index) == set(Ypd.index)
+
+    for col in ["count", "marked_count", "n_mol"]:
+      x = Xpd[col] # type: ignore
+      y = Ypd[col] # type: ignore
+
+      assert np.allclose(x, y) # type: ignore
