@@ -256,6 +256,11 @@ def test_update_diff_mols(smi1, smi2, include_mol_ref):
 
     assert set(Xpd.index) == F1frags | F2frags
 
+    assert not (F1.network.nodes - X.network.nodes)
+    assert not (F2.network.nodes - X.network.nodes)
+    assert not (F1.network.edges - X.network.edges)
+    assert not (F2.network.edges - X.network.edges)
+
     for frag in F1frags & F2frags:
       assert Xpd["n_mol"].loc[frag] == 2
 
@@ -285,3 +290,5 @@ def test_add(smiles, include_mol_ref):
       y = Ypd[col] # type: ignore
 
       assert np.allclose(x, y) # type: ignore
+
+      

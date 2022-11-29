@@ -1,4 +1,4 @@
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --cov='xenosite'" 
+addopts = "--doctest-modules" 
 pythonpath = "./"

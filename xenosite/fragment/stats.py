@@ -104,7 +104,7 @@ class FragmentStatistics:
     def update(self, other: "FragmentStatistics"):
         if self._stats and other._stats:
           assert set(other._stats) == set(self._stats), \
-             "These FragmentStatistics instances have different statistics!"
+            "These FragmentStatistics instances have different statistics!"
             
         other_stats = list(other._stats.items())
 
