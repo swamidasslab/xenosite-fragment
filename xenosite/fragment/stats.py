@@ -88,7 +88,6 @@ class FragmentStatistics:
 
     def update_one(self, frag, **kwargs):
         if self._stats:
-          print(kwargs, self._stats)
           assert set(kwargs) | {"frag"} == set(self._stats), \
             "must always call FragmentStatistics.update_one with the same arguments."
 
