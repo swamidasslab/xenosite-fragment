@@ -18,6 +18,7 @@ from xenosite.fragment.chem import MolToSmartsGraph
 
 logger = logging.getLogger(__name__)
 
+
 class FragmentNetwork:
     max_size: int = 10
     _version: int = 4
@@ -27,7 +28,7 @@ class FragmentNetwork:
         smiles: Optional[str] = None,
         marked: Optional[set[int]] = None,
         max_size: Optional[int] = None,
-        include_mol_ref : bool = False,
+        include_mol_ref: bool = True,
     ):
         self.version: int = self._version
         self.stats = FragmentStatistics()
@@ -47,7 +48,6 @@ class FragmentNetwork:
         marked = marked or set()
 
         network = nx.DiGraph()
-
 
         id_network = self._subgraph_network_ids(rdmol, mol)
         frag2reordering = defaultdict(lambda: [])
@@ -75,25 +75,24 @@ class FragmentNetwork:
             if fu != fv:
                 network.add_edge(fu, fv)
 
-
         if include_mol_ref:
-          top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
-          mol_key = (smiles, "ref")  # type: ignore
-          nx.add_star(network, [mol_key] + top)
+            top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
+            mol_key = (smiles, "ref")  # type: ignore
+            nx.add_star(network, [mol_key] + top)
 
         self.network = network
 
     def contains_fragment(self, frag: str) -> Generator[str, None, None]:
         with contextlib.suppress(Exception):
             frag = Fragment(frag).canonical().string
-            
+
         for n in nx.dfs_predecessors(self.network.reverse(False), frag):
             if isinstance(n, tuple):
                 yield n[0]
 
     def to_pandas(self) -> pd.DataFrame:
         df = self.stats.to_pandas()
-        df["size"] =(df["n_cover"] / df["count"]).astype(int)
+        df["size"] = (df["n_cover"] / df["count"]).astype(int)
         return df
 
     def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:
@@ -103,52 +102,49 @@ class FragmentNetwork:
         return subgraph_network_ids(mol, self.max_size)
 
     def add(self, smiles: str, **kwargs):
-      F = self.__class__(smiles, max_size=self.max_size, **kwargs)
-      self.update(F)
-
+        F = self.__class__(smiles, max_size=self.max_size, **kwargs)
+        self.update(F)
 
     def copy_stats(self, other: "FragmentNetwork") -> "FragmentNetwork":
-      #TODO change to shallow copy of self to avoid clobbering
-      self.stats = self.stats.copy_from(other.stats) 
-      return self
+        # TODO change to shallow copy of self to avoid clobbering
+        self.stats = self.stats.copy_from(other.stats)
+        return self
 
-    def molecule_shading(self, mol : str) -> np.ndarray:
-      raise NotImplemented
-      
-      N = type(self)(mol, max_size=self.max_size) # make 
-      frag2ids = N._frag2id
+    def molecule_shading(self, mol: str) -> np.ndarray:
+        raise NotImplemented
 
-      shade = zeros(12) 
-      for frag in N.network.nodes:
-        if not isinstance(frag, str): continue
-        if frag not in self.stats._lookup: continue
+        N = type(self)(mol, max_size=self.max_size)  # make
+        frag2ids = N._frag2id
 
-        ids = frag2ids[frag]
-        n = self.stats._lookup[frag]
-        frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"]
-        for match in ids:
-          shade[match] = np.where(shade[match]> frag_shade, shade[match], frag_shade)
+        shade = zeros(12)
+        for frag in N.network.nodes:
+            if not isinstance(frag, str):
+                continue
+            if frag not in self.stats._lookup:
+                continue
 
-      
+            ids = frag2ids[frag]
+            n = self.stats._lookup[frag]
+            frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"]
+            for match in ids:
+                shade[match] = np.where(
+                    shade[match] > frag_shade, shade[match], frag_shade
+                )
 
+    # How a molecule is shaded
+    # def display(info):
+    #   frag = info.name
+    #   #frag = re.sub(":", "", frag)
+    #   # frag = re.sub(r"\[nH\]", "n", frag)
+    #   try:
+    #     m = Chem.MolFromSmarts(frag)
+    #     assert m, "Fragment did not produce mol: " + frag
 
-
-# How a molecule is shaded
-# def display(info):
-#   frag = info.name
-#   #frag = re.sub(":", "", frag)
-#   # frag = re.sub(r"\[nH\]", "n", frag)
-#   try:
-#     m = Chem.MolFromSmarts(frag)
-#     assert m, "Fragment did not produce mol: " + frag
-
-#     x = xenopict.Xenopict(m)
-#     x.shade(np.minimum(info["marked_ids"] / info["n_mol"], 1))
-#     return x
-#   except Exception as e:
-#     return e
-
-
+    #     x = xenopict.Xenopict(m)
+    #     x.shade(np.minimum(info["marked_ids"] / info["n_mol"], 1))
+    #     return x
+    #   except Exception as e:
+    #     return e
 
     def save(self, filename: str):
         with gzip.GzipFile(filename, "wb") as f:
@@ -177,7 +173,7 @@ class FragmentNetwork:
         self.stats.update(other.stats)
 
         with contextlib.suppress(Exception):
-          del self._frag2id 
+            del self._frag2id
 
         for frag in other.network.nodes:
             if frag not in self.network.nodes:
@@ -318,7 +314,9 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
 
     # ring-ring edges
     for i in range(len(rings)):
-        edges.extend((i, j) for j in range(i + 1, len(rings)) if ring_N[i] & rings_set[j])
+        edges.extend(
+            (i, j) for j in range(i + 1, len(rings)) if ring_N[i] & rings_set[j]
+        )
 
     non_ring_atoms_set = set(non_ring_atoms)
 
@@ -329,7 +327,10 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
 
     # ring-atom edges
     for i in range(len(rings)):
-        edges.extend((i, mapping_inverted[j]) for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set)
+        edges.extend(
+            (i, mapping_inverted[j])
+            for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set
+        )
 
     u = [i for i, _ in edges]
     v = [j for _, j in edges]
