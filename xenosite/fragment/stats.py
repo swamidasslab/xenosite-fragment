@@ -61,24 +61,26 @@ class FragmentStatistics:
 
         self.append_one(frag, **S)
 
-    def copy_from(self, other : "FragmentStatistics") -> "FragmentStatistics":
-      k1 = set(self._stats)
-      k2 = set(other._stats)
+    def copy_from(self, other: "FragmentStatistics") -> "FragmentStatistics":
+        k1 = set(self._stats)
+        k2 = set(other._stats)
 
-      out = FragmentStatistics()
+        out = FragmentStatistics()
 
-      for k in k1 & k2:
-        n = other._lookup[k]
-        d = {k : other._stats[k][n] for k in other._stats}
-        out.append_one(**d)
-      
-      return out
+        for k in k1 & k2:
+            n = other._lookup[k]
+            d = {k: other._stats[k][n] for k in other._stats}
+            out.append_one(**d)
+
+        return out
 
     def append_one(self, frag, **kwargs):
         assert frag not in self._lookup
 
-        if self._stats: assert set(kwargs) | {"frag"} == set(self._stats), \
-            "must always call FragmentStatistics.append_one with the same arguments."
+        if self._stats:
+            assert set(kwargs) | {"frag"} == set(
+                self._stats
+            ), "must always call FragmentStatistics.append_one with the same arguments."
 
         self._lookup[frag] = len(self._stats["frag"])
         self._stats["frag"].append(frag)
@@ -88,8 +90,9 @@ class FragmentStatistics:
 
     def update_one(self, frag, **kwargs):
         if self._stats:
-          assert set(kwargs) | {"frag"} == set(self._stats), \
-            "must always call FragmentStatistics.update_one with the same arguments."
+            assert set(kwargs) | {"frag"} == set(
+                self._stats
+            ), "must always call FragmentStatistics.update_one with the same arguments."
 
         if frag in self._lookup:
             n = self._lookup[frag]
@@ -103,9 +106,10 @@ class FragmentStatistics:
 
     def update(self, other: "FragmentStatistics"):
         if self._stats and other._stats:
-          assert set(other._stats) == set(self._stats), \
-            "These FragmentStatistics instances have different statistics!"
-            
+            assert set(other._stats) == set(
+                self._stats
+            ), "These FragmentStatistics instances have different statistics!"
+
         other_stats = list(other._stats.items())
 
         keys = [x[0] for x in other_stats]
