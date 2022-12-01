@@ -128,7 +128,34 @@ class FragmentNetwork:
         for match in ids:
           shade[match] = np.where(shade[match] > frag_shade, shade[match], frag_shade)
         
-      return shade  
+      return shade
+
+    # Get fragments of specific molecule with specific atom id
+    def fragments_by_id(self, mol : Union[str, "FragmentNetwork"], atom_id : Union[int, Sequence[int]] ) -> Generator[tuple[str,np.ndarray], None, None]:
+    
+      if isinstance(mol, str):
+        # Create new ring fragment network from specific molecule
+        n_mol = type(self)(mol, max_size=8, include_mol_ref=True)
+      elif isinstance(mol, FragmentNetwork):
+        assert type(mol) == type(self), f"FragmentNetwork class mismatch: ${type(self)} ${type(mol)}"       
+        n_mol = mol
+
+      # Get fragments with specific atom id only
+      frag2ids = n_mol._frag2id
+        
+      if isinstance(atom_id, int): atom_id = [atom_id]
+      
+      atom_set = set(atom_id)
+
+      for frag in n_mol.network.nodes:
+        if not isinstance(frag, str): continue
+        if frag not in self.stats._lookup: continue
+
+        ids = frag2ids[frag]
+        for i in ids:
+          if atom_set & set(i):
+            # Save fragments and stats
+            yield frag, i  
 
     def save(self, filename: str):
         with gzip.GzipFile(filename, "wb") as f:
