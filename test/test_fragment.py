@@ -27,4 +27,4 @@ def test_boundary_0atom():
 
 def test_boundary_two_components():
     with pytest.raises(ValueError):
-      F = Fragment("C.C")
+        F = Fragment("C.C")

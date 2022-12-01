@@ -22,3 +22,25 @@ def random_smiles(draw):
     seed = draw(st.integers(min_value=1e2, max_value=1e7))  # type: ignore
     smiles = draw(st.sampled_from(TEST_SMILES))
     return Chem.MolToRandomSmilesVect(Chem.MolFromSmiles(smiles), 1, randomSeed=seed)[0]  # type: ignore
+
+
+@st.composite
+def random_smiles_som(draw):
+    smiles = draw(random_smiles())
+    site_smarts = Chem.MolFromSmarts(draw(st.sampled_from(["O", "N"])))  # type: ignore
+    mol = Chem.MolFromSmiles(smiles)  # type: ignore
+    soms = {m[0] for m in mol.GetSubstructMatches(site_smarts)}
+    return smiles, soms
+
+
+@st.composite
+def random_smiles_som_pair(draw):
+    smiles_pair = draw(random_smiles_pair())
+
+    site_smarts = Chem.MolFromSmarts(draw(st.sampled_from(["O", "N"])))  # type: ignore
+
+    mols = [Chem.MolFromSmiles(s) for s in smiles_pair]  # type: ignore
+
+    soms = [{m[0] for m in mol.GetSubstructMatches(site_smarts)} for mol in mols]
+
+    return smiles_pair, soms
