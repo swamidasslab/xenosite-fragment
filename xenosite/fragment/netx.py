@@ -18,6 +18,7 @@ from xenosite.fragment.chem import MolToSmartsGraph
 
 logger = logging.getLogger(__name__)
 
+
 class FragmentNetwork:
     max_size: int = 10
     _version: int = 4
@@ -27,7 +28,7 @@ class FragmentNetwork:
         smiles: Optional[str] = None,
         marked: Optional[set[int]] = None,
         max_size: Optional[int] = None,
-        include_mol_ref : bool = False,
+        include_mol_ref: bool = True,
     ):
         self.version: int = self._version
         self.stats = FragmentStatistics()
@@ -47,7 +48,6 @@ class FragmentNetwork:
         marked = marked or set()
 
         network = nx.DiGraph()
-
 
         id_network = self._subgraph_network_ids(rdmol, mol)
         frag2reordering = defaultdict(lambda: [])
@@ -75,11 +75,10 @@ class FragmentNetwork:
             if fu != fv:
                 network.add_edge(fu, fv)
 
-
         if include_mol_ref:
-          top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
-          mol_key = (smiles, "ref")  # type: ignore
-          nx.add_star(network, [mol_key] + top)
+            top = [node for node, degree in network.in_degree() if degree == 0]  # type: ignore
+            mol_key = (smiles, "ref")  # type: ignore
+            nx.add_star(network, [mol_key] + top)
 
         self.network = network
 
@@ -93,7 +92,7 @@ class FragmentNetwork:
 
     def to_pandas(self) -> pd.DataFrame:
         df = self.stats.to_pandas()
-        df["size"] =(df["n_cover"] / df["count"]).astype(int)
+        df["size"] = (df["n_cover"] / df["count"]).astype(int)
         return df
 
     def _remap_ids(self, ids: Sequence[int], id_network: nx.DiGraph) -> Sequence[int]:
@@ -155,7 +154,7 @@ class FragmentNetwork:
         for i in ids:
           if atom_set & set(i):
             # Save fragments and stats
-            yield frag, i  
+            yield frag, i
 
     def save(self, filename: str):
         with gzip.GzipFile(filename, "wb") as f:
@@ -325,7 +324,9 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
 
     # ring-ring edges
     for i in range(len(rings)):
-        edges.extend((i, j) for j in range(i + 1, len(rings)) if ring_N[i] & rings_set[j])
+        edges.extend(
+            (i, j) for j in range(i + 1, len(rings)) if ring_N[i] & rings_set[j]
+        )
 
     non_ring_atoms_set = set(non_ring_atoms)
 
@@ -336,7 +337,10 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
 
     # ring-atom edges
     for i in range(len(rings)):
-        edges.extend((i, mapping_inverted[j]) for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set)
+        edges.extend(
+            (i, mapping_inverted[j])
+            for j in (ring_N[i] - rings_set[i]) & non_ring_atoms_set
+        )
 
     u = [i for i, _ in edges]
     v = [j for _, j in edges]
