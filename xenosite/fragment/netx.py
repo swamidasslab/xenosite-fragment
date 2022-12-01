@@ -86,7 +86,7 @@ class FragmentNetwork:
     def contains_fragment(self, frag: str) -> Generator[str, None, None]:
         with contextlib.suppress(Exception):
             frag = Fragment(frag).canonical().string
-            
+
         for n in nx.dfs_predecessors(self.network.reverse(False), frag):
             if isinstance(n, tuple):
                 yield n[0]
@@ -106,49 +106,29 @@ class FragmentNetwork:
       F = self.__class__(smiles, max_size=self.max_size, **kwargs)
       self.update(F)
 
-
     def copy_stats(self, other: "FragmentNetwork") -> "FragmentNetwork":
       #TODO change to shallow copy of self to avoid clobbering
-      self.stats = self.stats.copy_from(other.stats) 
+      self.stats = self.stats.copy_from(other.stats)
       return self
 
     def molecule_shading(self, mol : str) -> np.ndarray:
-      raise NotImplemented
-      
-      N = type(self)(mol, max_size=self.max_size) # make 
+      N = type(self)(mol, max_size=self.max_size) # make
       frag2ids = N._frag2id
+    
+      mol_size = rdkit.Chem.MolFromSmiles(mol).GetNumAtoms()
 
-      shade = zeros(12) 
+      shade = np.zeros(mol_size)
       for frag in N.network.nodes:
         if not isinstance(frag, str): continue
         if frag not in self.stats._lookup: continue
 
         ids = frag2ids[frag]
         n = self.stats._lookup[frag]
-        frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"]
+        frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"][n]
         for match in ids:
-          shade[match] = np.where(shade[match]> frag_shade, shade[match], frag_shade)
-
-      
-
-
-
-# How a molecule is shaded
-# def display(info):
-#   frag = info.name
-#   #frag = re.sub(":", "", frag)
-#   # frag = re.sub(r"\[nH\]", "n", frag)
-#   try:
-#     m = Chem.MolFromSmarts(frag)
-#     assert m, "Fragment did not produce mol: " + frag
-
-#     x = xenopict.Xenopict(m)
-#     x.shade(np.minimum(info["marked_ids"] / info["n_mol"], 1))
-#     return x
-#   except Exception as e:
-#     return e
-
-
+          shade[match] = np.where(shade[match] > frag_shade, shade[match], frag_shade)
+        
+      return shade  
 
     def save(self, filename: str):
         with gzip.GzipFile(filename, "wb") as f:
@@ -177,7 +157,7 @@ class FragmentNetwork:
         self.stats.update(other.stats)
 
         with contextlib.suppress(Exception):
-          del self._frag2id 
+          del self._frag2id
 
         for frag in other.network.nodes:
             if frag not in self.network.nodes:
