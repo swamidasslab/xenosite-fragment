@@ -1,5 +1,5 @@
 pytest.ini
-coverage
+coverage*
 coverage.xml
 *.ipynb
 .hypothesis

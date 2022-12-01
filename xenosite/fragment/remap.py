@@ -2,7 +2,6 @@ from typing import Sequence, Iterable, Generator, Union
 from rdkit import Chem
 import ast
 from .serialize import Serialized
-from icecream import ic
 
 
 def rdkit_serialize(
