@@ -1,6 +1,8 @@
 from typing import Sequence, Iterable, Generator, Union
 from rdkit import Chem
+import ast
 from .serialize import Serialized
+from icecream import ic
 
 
 def rdkit_serialize(
@@ -10,7 +12,11 @@ def rdkit_serialize(
         mol = Chem.MolFromSmiles(mol)  # type: ignore
 
     smi = Chem.MolToSmiles(mol, canonical=canonical, isomericSmiles=isomeric)  # type: ignore
-    reorder = list(mol.GetPropsAsDict(True, True)["_smilesAtomOutputOrder"])  # type: ignore
+
+    # slow version
+    # reorder = list(mol.GetPropsAsDict(True, True)["_smilesAtomOutputOrder"])  # type: ignore
+    # fast version
+    reorder = ast.literal_eval(mol.GetProp("_smilesAtomOutputOrder"))  # type: ignore
 
     return Serialized(string=smi, reordering=reorder)
 
