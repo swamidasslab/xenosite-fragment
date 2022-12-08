@@ -18,7 +18,6 @@ from xenosite.fragment.chem import MolToSmartsGraph
 
 logger = logging.getLogger(__name__)
 
-
 class FragmentNetwork:
     max_size: int = 10
     _version: int = 4

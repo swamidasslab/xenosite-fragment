@@ -7,6 +7,13 @@ import pandas as pd
 import numpy as np
 from pytest import approx
 
+
+
+from xenosite.fragment import rdkit_warnings
+
+rdkit_warnings(False)
+
+
 def fragment_data(N: FragmentNetworkX) -> pd.DataFrame:
     return N.to_pandas()
 
