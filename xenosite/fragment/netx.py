@@ -110,40 +110,56 @@ class FragmentNetwork:
       self.stats = self.stats.copy_from(other.stats)
       return self
 
-    def molecule_shading(self, mol : str) -> np.ndarray:
-      N = type(self)(mol, max_size=self.max_size) # make
+    def molecule_shading(self,
+      mol : str,
+      beta_prior : float = 0.0,
+      hold_out : bool = False,
+      marked: Optional[set[int]] = None
+    ) -> np.ndarray:
+
+      N = type(self)(mol, max_size=self.max_size, marked=marked) # make
       frag2ids = N._frag2id
-    
-      mol_size = rdkit.Chem.MolFromSmiles(mol).GetNumAtoms()
+
+      rdmol = rdkit.Chem.MolFromSmiles(mol)
+      mol_size = rdmol.GetNumAtoms()
 
       shade = np.zeros(mol_size)
       for frag in N.network.nodes:
         if not isinstance(frag, str): continue
         if frag not in self.stats._lookup: continue
-
         ids = frag2ids[frag]
         n = self.stats._lookup[frag]
-        frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"][n]
+        marked_ids = self.stats._stats["marked_ids"][n]
+        n_mol = self.stats._stats["n_mol"][n]
+
+        if hold_out:
+            n = N.stats._lookup[frag]
+            marked_ids -= N.stats._stats["marked_ids"][n]
+            n_mol -= 1
+            if not n_mol: continue
+
+        frag_shade = marked_ids / (n_mol + beta_prior)
+
         for match in ids:
           shade[match] = np.where(shade[match] > frag_shade, shade[match], frag_shade)
-        
+
       return shade
 
     # Get fragments of specific molecule with specific atom id
     def fragments_by_id(self, mol : Union[str, "FragmentNetwork"], atom_id : Union[int, Sequence[int]] ) -> Generator[tuple[str,np.ndarray], None, None]:
-    
+
       if isinstance(mol, str):
         # Create new ring fragment network from specific molecule
         n_mol = type(self)(mol, max_size=8, include_mol_ref=True)
       elif isinstance(mol, FragmentNetwork):
-        assert type(mol) == type(self), f"FragmentNetwork class mismatch: ${type(self)} ${type(mol)}"       
+        assert type(mol) == type(self), f"FragmentNetwork class mismatch: ${type(self)} ${type(mol)}"
         n_mol = mol
 
       # Get fragments with specific atom id only
       frag2ids = n_mol._frag2id
-        
+
       if isinstance(atom_id, int): atom_id = [atom_id]
-      
+
       atom_set = set(atom_id)
 
       for frag in n_mol.network.nodes:
