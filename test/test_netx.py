@@ -1,4 +1,5 @@
 from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
+from xenosite.fragment.net import FragmentNetworkBase
 from hypothesis import strategies as st, given, assume, settings
 from .util import random_smiles_pair, random_smiles
 import networkx as nx
@@ -8,17 +9,16 @@ import numpy as np
 from pytest import approx
 
 
-
 from xenosite.fragment import rdkit_warnings
 
 rdkit_warnings(False)
 
 
-def fragment_data(N: FragmentNetworkX) -> pd.DataFrame:
+def fragment_data(N: FragmentNetworkBase) -> pd.DataFrame:
     return N.to_pandas()
 
 
-def fragment_view(N: FragmentNetworkX) -> nx.DiGraph:
+def fragment_view(N: FragmentNetworkBase) -> nx.DiGraph:
     return nx.subgraph_view(N.network, filter_node=lambda x: isinstance(x, str))  # type: ignore
 
 

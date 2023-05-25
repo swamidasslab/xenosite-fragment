@@ -1,4 +1,6 @@
 icecream
+hypothesis
+scipy
 typer
 rich
 numba
