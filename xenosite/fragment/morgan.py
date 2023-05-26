@@ -16,7 +16,7 @@ def to_primes(x) -> tuple[numba.uint64[:], numba.uint32]:  # type: ignore
 
 
 @njit(cache=True)
-def to_range(x) -> numba.uint64[:]:  # type: ignore
+def to_range(x : numba.uint64[:]) -> numba.uint64[:]:  # type: ignore
     u = np.unique(x)
     d = {v: n for n, v in enumerate(sorted(u))}
     return np.array([d[v] for v in x]), len(u)

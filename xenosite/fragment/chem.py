@@ -1,12 +1,17 @@
 from rdkit import Chem
 from .graph import Graph
 from .serialize import Serialized
-from typing import Callable, Optional, Union, Generator, Sequence
+from typing import Callable, Optional, Union, Generator, Sequence, NamedTuple
+from .morgan import to_range 
 
 Mol = Chem.rdchem.Mol
 Atom = Chem.rdchem.Atom
 Bond = Chem.rdchem.Bond
 
+
+class FragmentEquivalence(NamedTuple):
+    group : Sequence[int]
+    num : int
 
 def MolToGraph(
     mol: Mol,
@@ -97,7 +102,7 @@ class Fragment:
 
     def __init__(
         self,
-        frag: Union[Graph, Mol, str],
+        frag: Union[Graph, Mol, str, Serialized],
         nidx: Optional[Sequence[int]] = None,
         eidx: Optional[Sequence[int]] = None,
     ):
@@ -105,7 +110,7 @@ class Fragment:
         Fragment object to optimze matching of a fragment to multiple molecules.
 
         :param frag: The fragmenet as a string, Rdkit Mol or Graph. Pass as Graph to optimize performance.
-        :type frag: Union[Graph, Mol, str]
+        :type frag: Union[Graph, Mol, str, Serialized]
 
         :param nidx: If provided, fragment will be initalized to a subgraph of frag, defaults to None
         :type nidx: Optional[list[int]], optional
@@ -113,6 +118,10 @@ class Fragment:
         :param eidx: If nidx is provided, use these edge ids to determine subgraph, defaults to None
         :type eidx: Optional[list[int]], optional
         """
+
+        if isinstance(frag, Serialized):
+            frag = frag.string
+
         if isinstance(frag, str):
             frag = Chem.MolFromSmarts(frag)  # type: ignore
             if not frag:
@@ -144,6 +153,18 @@ class Fragment:
         :rtype: str
         """
         return self.serial.string
+
+    def equivalence(self)  -> FragmentEquivalence: 
+        """
+        Determine which atoms in a fragment are topologically equivalent.
+
+        :return: Tuple of numpy array with group assignment, and the integer number of distinct topological groups.
+        :rtype: FragmentEquivalence
+        """        
+
+        m = self.graph.morgan()
+        i,ni = to_range(m)
+        return FragmentEquivalence(i, ni)
 
     def canonical(self, remap=False) -> Serialized:
         """
