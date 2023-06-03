@@ -221,6 +221,8 @@ class Fragment:
         mol_graph = mol_graph or Graph.from_molecule(mol)
 
         for match in mol.GetSubstructMatches(self.smarts_mol):  # type: ignore
+            
+            #TODO: optimize by checking atom and bond number equality before canonnization
             match_str = mol_graph.subgraph(match).serialize(canonize=True).string
             if match_str == self.serial_canonized.string:
                 yield match
