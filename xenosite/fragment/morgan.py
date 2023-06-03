@@ -15,7 +15,7 @@ def to_primes(x) -> tuple[numba.uint64[:], numba.uint32]:  # type: ignore
 
 
 def to_range(x): # slower implementation of to_range_numba, but works without errors.
-    r = np.array(scipy.stats.rankdata(x, 'dense'), dtype=np.uint32)
+    r = np.array(scipy.stats.rankdata(x, 'dense'), dtype=np.uint32) - 1 
     n = len(np.unique(r))
     return r, n
 
