@@ -40,7 +40,8 @@ class FragmentNetworkBase:
             return
 
         rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmiles(smiles)  # type: ignore
-        assert rdmol, f"Not a valid SMILES: ${smiles}"
+        assert rdmol, f"Not a valid SMILES: ${smiles}" 
+        self._mol: rdkit.Chem.Mol  = rdmol # type: ignore
 
         mol: Graph = Fragment(rdmol).graph
         marked = marked or set()
