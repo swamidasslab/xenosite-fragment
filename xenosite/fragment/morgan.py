@@ -3,20 +3,24 @@ from __future__ import annotations
 import numpy as np
 import numba
 from numba import jit, njit
-
+import scipy.stats
 from typing import Iterator, Sequence, Union
 
 
 @njit(cache=True)
 def to_primes(x) -> tuple[numba.uint64[:], numba.uint32]:  # type: ignore
     u = np.unique(x)
-    p = _p[: len(u)]
     d = {v: n for n, v in enumerate(sorted(u))}
-    return np.array([p[d[v]] for v in x]), len(u)
+    return np.array([_p[d[v]] for v in x]), len(u)
 
 
-@njit(cache=True)
-def to_range(x : numba.uint64[:]) -> numba.uint64[:]:  # type: ignore
+def to_range(x): # slower implementation of to_range_numba, but works without errors.
+    r = np.array(scipy.stats.rankdata(x, 'dense'), dtype=np.uint32)
+    n = len(np.unique(r))
+    return r, n
+
+@njit(cache=True) # sometimes has errors related to caching (?)
+def to_range_numba(x : numba.uint64[:]) -> numba.uint32[:]:  # type: ignore
     u = np.unique(x)
     d = {v: n for n, v in enumerate(sorted(u))}
     return np.array([d[v] for v in x]), len(u)
