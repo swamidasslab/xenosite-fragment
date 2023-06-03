@@ -36,7 +36,7 @@ class FragmentVectorize:
         """
         Initialize with list of fragments (represented as strings).
         """
-        self.index = pd.Index(fragments)
+        self.index = pd.Index(fragments).unique()
 
         frags =  [Fragment(f) for f in  self.index]
         equiv =  [f.equivalence() for f in frags]
