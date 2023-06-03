@@ -84,7 +84,7 @@ class FragmentVectorize:
         :type network: FragmentNetworkBase
         :return: Vectors encoding the molecule in segemented vectors. 
           - "frag" is the fragment ID
-          - "group" is the group ID, which correspondes to a topological equivalence group within a fragment
+          - "site" is the group ID, which correspondes to a topological equivalence group within a fragment
           - "site_len" is the length of each segment, where each segement corresponds to an atom of the input molecule.
           - "mol_len" is the length of each segment, where each segement corresponds to a single molecule
         :rtype: FragmentVectors
