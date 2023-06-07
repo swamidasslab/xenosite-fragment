@@ -153,6 +153,15 @@ class Fragment:
         :rtype: str
         """
         return self.serial.string
+    
+    def __repr__(self) -> str:
+        """
+        Uses the cannonical-ordered SMARTS representation of fragment (not canonical).
+
+        :return: String representation of fragment.
+        :rtype: str
+        """
+        return f'{self.__class__.__name__}({repr(self.serial_canonized.string)})' 
 
     def equivalence(self)  -> FragmentEquivalence: 
         """
