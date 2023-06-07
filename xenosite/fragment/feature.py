@@ -61,7 +61,7 @@ class FragmentVectorize:
             return np.array(start + self.map[i][idx])
 
         if not equiv_group is None:
-            if equiv_group > self.nequiv[i]: raise KeyError
+            if equiv_group >= self.nequiv[i]: raise KeyError
             return np.array(start + equiv_group)    
         
     def sizes(self) -> FragmentVectorSizes:
@@ -120,8 +120,19 @@ class FragmentVectorize:
         v = [list(sorted(x)) for x in v]
 
         # stack and transpose organize for output
+        v = [np.array(x, np.uint32).reshape((-1, 2)) for x in v]
         vv = np.vstack(v).T  #type: ignore
         return FragmentVectors(vv[0], vv[1], site_len, mol_frag_len, mol_site_len)
+    
+    def embedding_frame(self, frag_embedding, site_embedding):
+        import pandas as pd
+
+        sections = np.cumsum(self.nequiv)[:-1]
+        se = np.split(site_embedding, sections)
+        ae = [np.take(e,m) for m,e in zip(self.map, se)]
+        frag_embedding = np.array(frag_embedding)
+
+        return pd.DataFrame({"frag_value": frag_embedding, "atom_values": ae, "site_values": se}, index=self.index)
 
     def resolve_features(self, vectors : FragmentVectors) -> tuple[int, str, int]:
         frags = self.index[vectors.frag]
