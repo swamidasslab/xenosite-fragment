@@ -182,6 +182,15 @@ class Fragment:
 
         return self.serial_canonized
 
+
+    def __eq__(self, other : Union[str, "Fragment"]):
+        if isinstance(other, Fragment):
+            other = self.serial_canonized.string
+        return self.serial_canonized.string == other
+    
+    def __hash__(self):
+        return self.serial_canonized.string.__hash__()
+    
     def remap_ids(self, ids: Sequence[int]) -> list[int]:
         """
         Remap a list of ID in the same space as the Fragment to
