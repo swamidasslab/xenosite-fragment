@@ -164,7 +164,7 @@ class Fragment:
 
         m = self.graph.morgan()
         i,ni = to_range(m)
-        return FragmentEquivalence(i, ni)
+        return FragmentEquivalence(i, ni) #type: ignore
 
     def canonical(self, remap=False) -> Serialized:
         """
