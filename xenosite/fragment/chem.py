@@ -194,7 +194,7 @@ class Fragment:
 
     def __eq__(self, other : Union[str, "Fragment"]):
         if isinstance(other, Fragment):
-            other = self.serial_canonized.string
+            return other == self.serial_canonized.string
         return self.serial_canonized.string == other
     
     def __hash__(self):

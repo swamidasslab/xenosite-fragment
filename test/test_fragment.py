@@ -28,3 +28,19 @@ def test_boundary_0atom():
 def test_boundary_two_components():
     with pytest.raises(ValueError):
         F = Fragment("C.C")
+
+
+def test_eq():
+    # Identical fragments with different ordering are equal
+    assert Fragment("CCO") == Fragment("OCC")
+
+    # Different fragments are not equal
+    assert Fragment("CCO") != Fragment("CCC")
+
+    # Fragment equal to canonical string of itself.
+    assert Fragment("OCC") == "C-C-O"
+
+    # Fragment not equal to non-canonical string of itsefl
+    assert Fragment("OCC") != "O-C-C"
+    assert Fragment("OCC") != "OCC"
+
