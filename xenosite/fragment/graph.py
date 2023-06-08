@@ -87,13 +87,20 @@ class Graph(BaseGraph):  # Undirected Graph
         return Graph(n=self.n + ne, edge=(e1, e2), nlabel=nlabel)  # type: ignore
 
     def morgan(self) -> np.ndarray[np.int64]:
-        if self.elabel:
-            return self.edge_to_node().morgan()[: self.n]
+        try:
+            _ = self._morgan
+        except:
 
-        e1 = self.edge[0]
-        e2 = self.edge[1]
+          if self.elabel:
+              self._morgan = self.edge_to_node().morgan()[: self.n]
+          else:
 
-        return morgan(self.nlabel, e1, e2)  # type: ignore
+              e1 = self.edge[0]
+              e2 = self.edge[1]
+
+              self._morgan = morgan(self.nlabel, e1, e2)  # type: ignore
+    
+        return self._morgan
 
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
