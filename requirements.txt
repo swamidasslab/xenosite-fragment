@@ -12,3 +12,4 @@ rdkit
 networkx
 pytest
 pytest-cov
+keras
