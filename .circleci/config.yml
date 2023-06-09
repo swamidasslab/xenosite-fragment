@@ -63,11 +63,11 @@ jobs:
       - run:
           name: build source distribution
           command: python setup.py sdist
-      # - run:
-      #     name: upload to pypi
-      #     command: |
-      #       pip install twine
-      #       twine upload dist/*
+      - run:
+          name: upload to pypi
+          command: |
+            pip install twine
+            twine upload dist/*
 workflows:
   build_test_publish:
     jobs:
@@ -81,15 +81,13 @@ workflows:
             tags:
               only: /^v.*/
 
-
-
-      # - build_upload:
-      #     requires:
-      #       - test_py3_9
-      #       - test_py3_10
-      #     filters:
-      #       tags:
-      #         only: /^v.*/
-      #       branches:
-      #         ignore: /.*/
+      - build_upload:
+          requires:
+            - test_py3_9
+            - test_py3_10
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
 
