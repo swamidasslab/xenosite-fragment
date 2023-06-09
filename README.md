@@ -1,4 +1,12 @@
-Library for processing molecule fragments. 
+# Xenosite Fragment
+
+A library for processing molecule fragments. 
+
+Install from pypi:
+
+```
+pip install xenosite-fragment
+```
 
 Create a fragment from a SMILES or a fragment SMILES string:
 
