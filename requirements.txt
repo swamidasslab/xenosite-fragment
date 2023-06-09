@@ -12,4 +12,5 @@ rdkit
 networkx
 pytest
 pytest-cov
+tensorflow
 keras
