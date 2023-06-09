@@ -89,6 +89,40 @@ Find matches to fragments:
 
 >>> list(f2.matches(mol))
 [(6, 5, 4), (6, 5, 0)]
+
+Fragments know how to report if they are canonically the same as each other or strings.
+
+>>> Fragment("CCO") == Fragment("OCC")
+True
+>>> Fragment("CCO") == "C-C-O"
+True
+
+Note, however, that strings are not converted to canonical form. Therefore,
+
+>>> Fragment("CCO") == "CCO"
+False
+
+Enumerate and compute statistics on all the subgraphs in a molecule:
+
+>>> from xenosite.fragment.net import SubGraphFragmentNetwork
+>>> N = SubGraphFragmentNetwork("CC1COC1")
+>>> fragments = N.to_pandas()
+>>> list(fragments.index)
+['C-C', 'C', 'C-O-C', 'C-O', 'O', 'C-C1-C-O-C-1', 'C1-C-O-C-1', 'C-C-C-O', 'C-C(-C)-C', 'C-C-O', 'C-C-C']
+>>> fragments["size"].to_numpy()
+array([2, 1, 3, 2, 1, 5, 4, 4, 4, 3, 3])
+
+Better fragments can be enumerated by collapsing all atoms in a ring into a single node
+during subgraph enumeration. 
+
+>>> from xenosite.fragment.net import RingFragmentNetwork
+>>> N = RingFragmentNetwork("CC1COC1")
+>>> fragments = N.to_pandas()
+>>> list(fragments.index)
+['C-C1-C-O-C-1', 'C', 'C1-C-O-C-1']
+>>> fragments["size"].to_numpy()
+array([5, 1, 4])
+
 """
 
 
