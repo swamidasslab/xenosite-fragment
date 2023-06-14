@@ -3,6 +3,7 @@ from .graph import Graph
 from .serialize import Serialized
 from typing import Callable, Optional, Union, Generator, Sequence, NamedTuple
 from .morgan import to_range 
+import networkx as nx
 
 Mol = Chem.rdchem.Mol
 Atom = Chem.rdchem.Atom
@@ -139,7 +140,7 @@ class Fragment:
 
         self.graph = fragment
 
-        self._nidx = nidx = nidx or list(range(fragment.n))
+        self._nidx : list[int] = nidx or list(range(fragment.n)) # type: ignore
 
         self.serial_canonized = fragment.serialize(canonize=True)
         self.serial = fragment.serialize(canonize=False)
@@ -244,3 +245,145 @@ class Fragment:
             match_str = mol_graph.subgraph(match).serialize(canonize=True).string
             if match_str == self.serial_canonized.string:
                 yield match
+
+
+
+
+#TODO: implment a version/option of this function uses the edge count instead of just the atoms.
+#TODO: add convenience conversion from Fragment or str to rdkit.Mol
+def smarts_tanimoto(m1 : Chem.Mol, m2 : Chem.Mol, cutoff : float = 0, allow_disconnected : bool = True) -> float: #type: ignore
+    """Tanimoto similarity of two SMARTS rdkit mols. Overlap is not mesured using a fingerprint, but 
+    by computing the max-common-structure overlap (in atoms) of the two, so this can be slow.
+
+    For example, these two molecules/SMARTS overlap in 3 out of 4 molecules, yielding a tanimoto of 3/4. 
+
+    >>> from rdkit import Chem
+    >>> m1 = Chem.MolFromSmarts("CCC")
+    >>> m2 = Chem.MolFromSmarts("CCCC")
+    >>> smarts_tanimoto(m1, m2)
+    0.75
+
+    These two molecules yield the same overlap because the SMARTS string allows for either
+    a C or an N in the third position.
+
+    >>> m1 = Chem.MolFromSmarts("CCN")
+    >>> m2 = Chem.MolFromSmarts("CC[C,N]C")
+    >>> smarts_tanimoto(m1, m2)
+    0.75
+
+    Cutoff is the minimum similarity we care about, which can speed computation by avoiding the MCS
+    computation in some cases. When this threshold can't be met, the similarity is reported as zero.
+
+    >>> smarts_tanimoto(m1, m2, cutoff=0.8)
+    0.0
+
+    Note that the function will still report similarity, if it exists and even if it is below cutoff, when
+    the MSC step is run. In the following case, 3 out of 5 atoms match, but based on size of the framents 
+    alone 4 out of 4 atoms could have matched. So the MCS was run, and the 0.6 similarity was reported even
+    though it was below the cutoff.
+
+    >>> m1 = Chem.MolFromSmarts("OCCN")
+    >>> m2 = Chem.MolFromSmarts("CC[C,N]C")
+    >>> smarts_tanimoto(m1, m2, cutoff=0.8)
+    0.6
+
+    """
+    A = m1.GetNumAtoms()
+    B = m2.GetNumAtoms()
+    
+    if min(A,B) / max(A,B) < cutoff: return 0.0
+    AnB = _maximum_common_subgraph(m1, m2, allow_disconnected)
+
+    return AnB / (A + B - AnB) 
+
+
+
+def _modular_product_graph(m1 : Chem.Mol, m2: Chem.Mol) -> nx.Graph: #type: ignore
+    """This function converts two molecules into a modular product graph.
+    Cliques in a modular product graph correspond to the maximum-common substructure.
+    Uses rdkit mols to make use of SMARTS matching logic.
+    
+    https://en.wikipedia.org/wiki/Modular_product_of_graphs
+    """
+    g = nx.Graph()
+
+    #nodes are tuple of atomids (i,j), one from each input, representing a pairing 
+    for a1 in m1.GetAtoms():
+        for a2 in m2.GetAtoms():
+            if a1.Match(a2) or a2.Match(a1):
+                g.add_node((a1.GetIdx(), a2.GetIdx()))
+
+    # edges indicate connectivity between parring is compatible
+    for n1 in g.nodes():
+        for n2 in g.nodes():
+            # no edge if pairs refer to same node (in either graph)
+            if n1[0] == n2[0]: continue
+            if n1[1] == n2[1]: continue
+            
+            b1 = m1.GetBondBetweenAtoms(n1[0],n2[0])
+            b2 = m2.GetBondBetweenAtoms(n1[1],n2[1])
+            
+            # no edge if one pair connected and the other isn't
+            if b1 and not b2: continue
+            if not b1 and b2: continue
+            
+            # if both pairs aren't connected, add edge
+            if not b1 and not b2:
+                g.add_edge(n1, n2)
+                continue
+            
+            # if both pairs are connected, and edge matches, add edge
+            if b1.Match(b2) or b2.Match(b1):
+                g.add_edge(n1, n2)
+                continue
+
+            # otherwise, no edge
+
+    return g
+
+
+def _mol_graph(m) -> nx.Graph:
+    # convert to a graph ignoring all labels
+    g = nx.Graph()
+    for b in m.GetBonds():
+        i = b.GetBeginAtomIdx()
+        j = b.GetEndAtomIdx()
+        g.add_edge(i,j)
+    return g
+
+
+def _maximum_common_subgraph(m1 : Chem.Mol, m2 : Chem.Mol, allow_disconnected : bool = True) -> int: #type: ignore
+    """
+    Return the size (in atoms) of the maximum match between
+    two RDkit molecules, using smarts matching rules.
+
+    :param m1: molecule 2
+    :type m1: Chem.Mol
+    :param m2: molecule 1
+    :type m2: Chem.Mol
+    :return: size of maximum match in atoms
+    :rtype: int
+    """
+
+    g = _modular_product_graph(m1, m2)
+
+    # need to consider all cliques
+    # TODO: benchmark against igraph library
+    cliques = nx.clique.find_cliques(g)
+
+    if allow_disconnected:  
+      max_clique =  max(cliques, key=len)
+
+    else: #TODO: Optimize this branch
+      # we are only interested in connected components of the match
+      # so we get the sugraph corresponding to the clique in g1
+      # alternatively, g2 could be used
+      g1 = _mol_graph(m1)
+          
+      to_subgraph = lambda clique : g1.subgraph([c[0] for c in clique])
+      to_components = lambda clique : nx.connected_components(to_subgraph(clique))
+      max_connected_clique = lambda clique: max(to_components(clique), key=len)
+      max_clique = max((max_connected_clique(clique) for clique in cliques), key=len)
+    
+    return len(max_clique)
+      

@@ -127,7 +127,7 @@ array([5, 1, 4])
 
 
 from .graph import Graph
-from .chem import Fragment, MolToSmartsGraph
+from .chem import Fragment, MolToSmartsGraph, smarts_tanimoto
 from .net import (
     SubGraphFragmentNetwork as FragmentNetworkX,
     RingFragmentNetwork as RingFragmentNetworkX,
