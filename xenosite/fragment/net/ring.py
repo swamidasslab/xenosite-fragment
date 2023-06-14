@@ -22,7 +22,7 @@ class RingFragmentNetwork(FragmentNetworkBase):
         out.mapping = graph.nprops["mapping"]  # type: ignore
         return out
 
-def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size=8):  # type: ignore
+def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size=8) -> Graph:  # type: ignore
     mol = mol or MolToSmartsGraph(rdmol)  # type: ignore
     assert mol
 
@@ -32,13 +32,17 @@ def ring_graph(rdmol: rdkit.Chem.Mol, mol: Optional[Graph] = None, max_ring_size
     )
     rings_set = [set(r) for r in rings]
 
+    # atoms that are and are not rings
     ring_atoms = reduce(lambda x, y: x | y, (set(r) for r in rings), set())
     non_ring_atoms = [x for x in range(mol.n) if x not in ring_atoms]
 
+    #maps each id in the ring graph to the atom(s) to which it corresponds in the molecule
     mapping = rings + [[x] for x in non_ring_atoms]
 
+    # maps non-ring atoms to their id in the ring graph.
     mapping_inverted = {x: n + len(rings) for n, x in enumerate(non_ring_atoms)}
 
+    # Get neighbors dictionary of mol-graph.
     N = neighbors(mol)
     N = {k: set(v) for k, v in N.items()}
 
