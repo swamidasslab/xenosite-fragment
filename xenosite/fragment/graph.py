@@ -132,8 +132,8 @@ def _dfs(
     out: Optional[list[DFS_EDGE]] = None,
 ) -> list[DFS_EDGE]:
 
-    visited = visited or set()
-    out = out or []
+    visited = visited if visited is not None else set()
+    out = out if out is not None else []
     visited.add(start)
 
     for n in neighbors[start]:
