@@ -110,7 +110,7 @@ class Graph(BaseGraph):  # Undirected Graph
         adj = defaultdict(list)
         for i in range(len(self.edge[0])):
             adj[self.edge[0][i]].append(self.edge[1][i])
-            
+
         # # equiv loop:
         # for i, j in zip(*self.edge):
         #     adj[i].append(j)
@@ -118,9 +118,13 @@ class Graph(BaseGraph):  # Undirected Graph
         if colors and self.nlabel:
             c = _to_nauty_colors(self.nlabel)   
         else:
-            c = None   
+            c = []
 
-        g = pynauty.Graph(self.n, adjacency_dict=adj, vertex_coloring=c)
+        g = pynauty.Graph(self.n)
+
+        # setting adj and color, bypassing all checks
+        g._adjacency_dict = adj
+        g._vertex_coloring = c
         return g
     
     def _nauty_order(self):
