@@ -123,11 +123,6 @@ class Graph(BaseGraph):  # Undirected Graph
         c = _invert_mapping(c)
         return c
 
-        
-
-        
-
-
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
 
@@ -202,7 +197,7 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
         return []
 
     if canonize:
-        M = G.morgan()
+        M = G._nauty_order()
         start = int(np.argmin(M))
         for n in N:
             N[n] = sorted(N[n], key=lambda x: M[x])

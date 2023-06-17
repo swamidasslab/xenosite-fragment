@@ -138,7 +138,7 @@ Enumerate and compute statistics on all the subgraphs in a molecule:
 >>> N = SubGraphFragmentNetwork("CC1COC1")
 >>> fragments = N.to_pandas()
 >>> list(fragments.index)
-['C-C', 'C', 'C-O-C', 'C-O', 'O', 'C-C1-C-O-C-1', 'C1-C-O-C-1', 'C-C-C-O', 'C-C(-C)-C', 'C-C-O', 'C-C-C']
+['C-C', 'C', 'C-O-C', 'C-O', 'O', 'C-C1-C-O-C-1', 'C1-C-C-O-1', 'C-C-C-O', 'C-C(-C)-C', 'C-C-O', 'C-C-C']
 >>> fragments["size"].to_numpy()
 array([2, 1, 3, 2, 1, 5, 4, 4, 4, 3, 3])
 ```
@@ -151,7 +151,7 @@ during subgraph enumeration.
 >>> N = RingFragmentNetwork("CC1COC1")
 >>> fragments = N.to_pandas()
 >>> list(fragments.index)
-['C-C1-C-O-C-1', 'C', 'C1-C-O-C-1']
+['C-C1-C-O-C-1', 'C', 'C1-C-C-O-1']
 >>> fragments["size"].to_numpy()
 array([5, 1, 4])
 ```

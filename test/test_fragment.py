@@ -63,15 +63,17 @@ def test_case2():
     """Will fail if bond labels not used."""
     _test_canonization(r"C1=CCCCC1")
 
-#TODO: Fix the following hard failure cases.
-@pytest.mark.xfail
 def test_case_hard1():
-    """From fig. 4, DOI: 10.1021/acs.jcim.5b00543"""
+    """From fig. 4, DOI: 10.1021/acs.jcim.5b00543
+    
+    Fails when using morgan labels for canonization.
+    """
     _test_canonization(r"C12C3C4C5C6C1C6C(C23)C45")
     
-@pytest.mark.xfail
 def test_case_hard2():
-    """From fig. 4, DOI: 10.1021/acs.jcim.5b00543"""
+    """From fig. 4, DOI: 10.1021/acs.jcim.5b00543
+    
+    Fails when using morgan labels for canonization."""
     _test_canonization(r"C1=CC2=CC=C1\C=C/C1=CC=C(C=C1)\C=C/2")
 
 
