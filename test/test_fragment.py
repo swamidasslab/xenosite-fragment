@@ -2,6 +2,7 @@ import pytest
 from xenosite.fragment import Fragment
 from hypothesis import strategies as st, settings, given, assume
 from .util import random_smiles_pair
+from rdkit import Chem
 
 # FIXED @pytest.mark.xfail(reason="serialization can't use ring ids > 9 yet")
 def test_many_rings():
@@ -43,4 +44,28 @@ def test_eq():
     # Fragment not equal to non-canonical string of itsefl
     assert Fragment("OCC") != "O-C-C"
     assert Fragment("OCC") != "OCC"
+
+
+def _test_canonization(smi, seed=1):
+    m = Chem.MolFromSmarts(smi)
+    f = Fragment(m)
+    
+    for s in Chem.MolToRandomSmilesVect(m, 10, seed):
+        assert f == Fragment(s)
+
+
+def test_case1():
+    _test_canonization(r"CCc1ccccc1O")
+
+#TODO: Fix the following hard failure cases.
+@pytest.mark.xfail
+def test_case_hard1():
+    """From fig. 4, DOI: 10.1021/acs.jcim.5b00543"""
+    _test_canonization(r"C12C3C4C5C6C1C6C(C23)C45")
+    
+@pytest.mark.xfail
+def test_case_hard2():
+    """From fig. 4, DOI: 10.1021/acs.jcim.5b00543"""
+    _test_canonization(r"C1=CC2=CC=C1\C=C/C1=CC=C(C=C1)\C=C/2")
+
 
