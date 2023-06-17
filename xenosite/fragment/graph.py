@@ -102,6 +102,32 @@ class Graph(BaseGraph):  # Undirected Graph
     
         return self._morgan
 
+    def _to_nauty(self, colors=True):
+        import pynauty
+        g = pynauty.Graph(self.n)
+        for i,j in zip(*self.edge): g.connect_vertex(i,j)
+
+        if colors:
+            c = _to_nauty_colors(self.nlabel)
+            g.set_vertex_coloring(c)         
+        return g
+    
+    def _nauty_order(self):
+        import pynauty
+        if self.elabel:
+            return self.edge_to_node()._nauty_order()[:self.n]
+        
+        g = self._to_nauty()
+
+        c = pynauty.canon_label(g)
+        c = _invert_mapping(c)
+        return c
+
+        
+
+        
+
+
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
 
@@ -112,6 +138,22 @@ class Graph(BaseGraph):  # Undirected Graph
         if smiles:
             return chem.MolToSmilesGraph(molecule)
         return chem.MolToSmartsGraph(molecule)
+
+def _to_nauty_colors(x):
+  unq = sorted(np.unique(x))
+  unq_lookup = {u: n for n,u in enumerate(unq)}
+
+  colors = [set() for _ in range(len(unq))]
+  for n, l in enumerate(x):
+    colors[unq_lookup[l]].add(n)
+
+  return colors
+
+def _invert_mapping(x):
+    x = np.asarray(x)
+    y = np.zeros_like(x)
+    for i in range(len(x)): y[x[i]] = i
+    return y
 
 
 class DFS_TYPE(int, Enum):
