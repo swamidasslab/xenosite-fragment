@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import NamedTuple, Optional, Sequence, Union, Any
-
+from numba import jit, njit
 import numpy as np
 
 from . import serialize
@@ -107,8 +107,9 @@ class Graph(BaseGraph):  # Undirected Graph
         g = pynauty.Graph(self.n)
         for i,j in zip(*self.edge): g.connect_vertex(i,j)
 
-        if colors:
-            c = _to_nauty_colors(self.nlabel)
+        if colors and self.nlabel:
+            c = self.nlabel
+            c = _to_nauty_colors(c)
             g.set_vertex_coloring(c)         
         return g
     
@@ -120,6 +121,7 @@ class Graph(BaseGraph):  # Undirected Graph
         g = self._to_nauty()
 
         c = pynauty.canon_label(g)
+        c = np.asarray(c) #type:  ignore
         c = _invert_mapping(c)
         return c
 
@@ -134,6 +136,7 @@ class Graph(BaseGraph):  # Undirected Graph
             return chem.MolToSmilesGraph(molecule)
         return chem.MolToSmartsGraph(molecule)
 
+
 def _to_nauty_colors(x):
   unq = sorted(np.unique(x))
   unq_lookup = {u: n for n,u in enumerate(unq)}
@@ -144,8 +147,9 @@ def _to_nauty_colors(x):
 
   return colors
 
+
+@njit
 def _invert_mapping(x):
-    x = np.asarray(x)
     y = np.zeros_like(x)
     for i in range(len(x)): y[x[i]] = i
     return y
