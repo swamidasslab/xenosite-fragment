@@ -3,7 +3,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import NamedTuple, Optional, Sequence, Union, Any
 from numba import jit, njit
+from collections import defaultdict
 import numpy as np
+import pynauty
 
 from . import serialize
 from .morgan import morgan
@@ -102,15 +104,23 @@ class Graph(BaseGraph):  # Undirected Graph
     
         return self._morgan
 
+    
     def _to_nauty(self, colors=True):
-        import pynauty
-        g = pynauty.Graph(self.n)
-        for i,j in zip(*self.edge): g.connect_vertex(i,j)
+
+        adj = defaultdict(list)
+        for i in range(len(self.edge[0])):
+            adj[self.edge[0][i]].append(self.edge[1][i])
+            
+        # # equiv loop:
+        # for i, j in zip(*self.edge):
+        #     adj[i].append(j)
 
         if colors and self.nlabel:
-            c = self.nlabel
-            c = _to_nauty_colors(c)
-            g.set_vertex_coloring(c)         
+            c = _to_nauty_colors(self.nlabel)   
+        else:
+            c = None   
+
+        g = pynauty.Graph(self.n, adjacency_dict=adj, vertex_coloring=c)
         return g
     
     def _nauty_order(self):
