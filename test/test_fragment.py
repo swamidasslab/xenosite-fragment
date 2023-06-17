@@ -47,10 +47,10 @@ def test_eq():
 
 
 def _test_canonization(smi, seed=1):
-    m = Chem.MolFromSmarts(smi)
+    m = Chem.MolFromSmarts(smi) #type: ignore
     f = Fragment(m)
     
-    for s in Chem.MolToRandomSmilesVect(m, 10, seed):
+    for s in Chem.MolToRandomSmilesVect(m, 10, seed): #type: ignore
         assert f == Fragment(s)
 
 
