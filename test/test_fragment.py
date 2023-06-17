@@ -55,7 +55,7 @@ def _test_canonization(smi, seed=1):
 
 
 def test_case1():
-    _test_canonization(r"CCc1ccccc1O")
+    _test_canonization(r"Cc1ccccc1O")
 
 #TODO: Fix the following hard failure cases.
 @pytest.mark.xfail
