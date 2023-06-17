@@ -55,7 +55,13 @@ def _test_canonization(smi, seed=1):
 
 
 def test_case1():
+    """Will fail if atom labels not used."""
     _test_canonization(r"Cc1ccccc1O")
+
+
+def test_case2():
+    """Will fail if bond labels not used."""
+    _test_canonization(r"C1=CCCCC1")
 
 #TODO: Fix the following hard failure cases.
 @pytest.mark.xfail
