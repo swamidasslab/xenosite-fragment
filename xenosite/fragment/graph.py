@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import NamedTuple, Optional, Sequence, Union, Any
-from numba import jit, njit
+from numba import njit
 from collections import defaultdict
 import numpy as np
 import pynauty
@@ -225,11 +225,12 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
 
     return _dfs(start, N)
 
-
-def neighbors(G: Graph) -> dict[int, list[int]]:
-    N = {n: [] for n in range(G.n)}
+def neighbors(G: Graph) -> dict[int,list[int]]:
+    N = [[] for n in range(G.n)]
 
     for i, j in zip(G.edge[0], G.edge[1]):
         N[i].append(j)
         N[j].append(i)
+
+    N = {i: N[i] for i in range(G.n)}
     return N
