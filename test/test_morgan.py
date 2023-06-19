@@ -1,4 +1,4 @@
-from xenosite.fragment import morgan as mg
+from xenosite.fragment import ops as mg
 from hypothesis import strategies as st, given
 from pytest import approx
 import pytest

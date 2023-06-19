@@ -8,7 +8,7 @@ import numpy as np
 import pynauty
 
 from . import serialize
-from .morgan import morgan
+from .ops import morgan
 
 
 class BaseGraph:

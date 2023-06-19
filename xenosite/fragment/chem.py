@@ -2,7 +2,7 @@ from rdkit import Chem
 from .graph import Graph
 from .serialize import Serialized
 from typing import Callable, Optional, Union, Generator, Sequence, NamedTuple
-from .morgan import to_range 
+from .ops import to_range 
 import networkx as nx
 
 Mol = Chem.rdchem.Mol
