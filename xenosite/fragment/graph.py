@@ -8,7 +8,7 @@ import numpy as np
 import pynauty
 
 from . import serialize
-from .ops import morgan
+from .ops import morgan, to_range, segment_min
 
 
 class BaseGraph:
@@ -87,6 +87,17 @@ class Graph(BaseGraph):  # Undirected Graph
         e2 = np.concatenate([eid, eid])
 
         return Graph(n=self.n + ne, edge=(e1, e2), nlabel=nlabel)  # type: ignore
+    
+    def neighbors(self) -> list[list[int]]:
+        N = [[] for _ in range(self.n)]
+
+        for i, j in zip(self.edge[0], self.edge[1]):
+            N[i].append(j)
+            N[j].append(i)
+
+        return N
+    
+
 
     def morgan(self) -> np.ndarray[np.int64]:
         try:
@@ -138,6 +149,33 @@ class Graph(BaseGraph):  # Undirected Graph
         c = np.asarray(c) #type:  ignore
         c = _invert_mapping(c)
         return c
+
+    def _nauty_orbits(self):
+        import pynauty
+        if self.elabel:
+            o = self.edge_to_node()._nauty_orbits()[:self.n]
+            o = to_range(o)[0]
+            return o
+        
+        g = self._to_nauty()
+
+        o = pynauty.autgrp(g)[3] # orbits of each vertex (equivalent groups) with non canonical colors
+
+        # Canonize using cannoical ordering
+        c = pynauty.canon_label(g)
+        c = np.asarray(c) #type:  ignore
+        c = _invert_mapping(c)
+
+        # canonical color for each orbit
+        o = to_range(o)[0]
+        can_o = segment_min(c, o)
+        can_o = to_range(can_o)[0]
+
+        # canonical orbit for each vertex
+        o = np.take(can_o, o)
+
+        return o
+
 
     def serialize(self, canonize=True) -> serialize.Serialized:
         return serialize.serialize(self, canonize)
@@ -226,7 +264,7 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
     return _dfs(start, N)
 
 def neighbors(G: Graph) -> dict[int,list[int]]:
-    N = [[] for n in range(G.n)]
+    N = [[] for _ in range(G.n)]
 
     for i, j in zip(G.edge[0], G.edge[1]):
         N[i].append(j)

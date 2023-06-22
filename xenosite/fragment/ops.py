@@ -4,7 +4,7 @@ import numpy as np
 import numba
 from numba import jit, njit
 import scipy.stats
-from typing import Iterator, Sequence, Union
+from typing import Iterator, Sequence, Union, Optional
 
 
 @njit(cache=True)
@@ -36,6 +36,37 @@ def collect_product(
         out[j] *= v[i]
     return out
 
+
+def dtype_info(dtype):
+    try:
+        return np.iinfo(dtype) #type: ignore
+    except ValueError:
+        return np.finfo(dtype)
+
+def segment_reduce(reduce, data, segment_ids, n : Optional[int] = None, init : Union[float, int, str] = 0):
+    data = np.asarray(data)  #type: ignore
+    n = n or (np.max(segment_ids)+1) 
+    s = np.zeros((n,) + data.shape[1:], dtype=data.dtype) 
+
+    if type(init) == str:
+        init = getattr(dtype_info(data.dtype), init)
+
+    if init is not None: s[:] = init
+
+    reduce.at(s, segment_ids, data)
+    return s
+
+def segment_sum(data, segment_ids, n : Optional[int] = None, init = 0):
+    return segment_reduce(np.add, data, segment_ids, n, init)
+
+def segment_prod(data, segment_ids, n : Optional[int] = None, init = 1):
+    return segment_reduce(np.prod, data, segment_ids, n, init)
+
+def segment_max(data, segment_ids, n : Optional[int] = None, init = "min"):
+    return segment_reduce(np.maximum, data, segment_ids, n, init)
+
+def segment_min(data, segment_ids, n : Optional[int] = None, init = "max"):
+    return segment_reduce(np.minimum, data, segment_ids, n, init)
 
 @njit(cache=True)
 def _morgan(v, e1: numba.uint32[:], e2: numba.uint32[:]) -> numba.uint64[:]:  # type: ignore
