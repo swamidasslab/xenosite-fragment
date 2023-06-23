@@ -43,8 +43,11 @@ def dtype_info(dtype):
     except ValueError:
         return np.finfo(dtype)
 
+
 def segment_reduce(reduce, data, segment_ids, n : Optional[int] = None, init : Union[float, int, str] = 0):
     data = np.asarray(data)  #type: ignore
+    segment_ids = np.asarray(segment_ids) #type: ignore
+    
     n = n or (np.max(segment_ids)+1) 
     s = np.zeros((n,) + data.shape[1:], dtype=data.dtype) 
 

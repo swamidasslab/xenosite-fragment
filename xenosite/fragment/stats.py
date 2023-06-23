@@ -5,9 +5,13 @@ from functools import reduce
 from scipy.stats import hypergeom
 import pandas as pd
 from typing import Optional
-
+from .ops import segment_max
+from . import Fragment
 
 class FragmentStatistics:
+    # the statistics that are static, not accumulated, in updates
+    static_stats = {"size", "equivalence_group", "frag"}
+
     def __init__(self):
         self._stats: dict = defaultdict(list)
         self._lookup: dict[str, int] = {}
@@ -20,11 +24,18 @@ class FragmentStatistics:
 
         S = dict()
 
+        F = Fragment(frag)
+        eq = F.equivalence()[0]
+
         amarked = np.array(list(marked))[None, None, :]
 
         # normalized count of marked ids by position in fragment
         marked_ids = (np.array(ids)[:, :, None] == amarked).sum(axis=0).sum(axis=1)
         marked_ids = np.where(marked_ids > 0, 1, 0)  # type: ignore
+
+        # deal with fragment symmetries
+        marked_groups = segment_max(marked_ids, eq)
+        marked_ids = marked_groups[eq]
 
         set_ids = [set(i) for i in ids]
 
@@ -43,10 +54,12 @@ class FragmentStatistics:
             / size
         )
 
-        # exp = probability of fragment overlapping with at least one marked atom
-        # given: size of molecule, number of atoms matching fragment, number of marked atoms
-        exp = 1 - hypergeom.cdf(0, mol_atoms, int(len(covered)), len(marked))
-        obs = 1 if marked_count else 0
+        # # exp = probability of fragment overlapping with at least one marked atom
+        # # given: size of molecule, number of atoms matching fragment, number of marked atoms
+        # exp = 1 - hypergeom.cdf(0, mol_atoms, int(len(covered)), len(marked))
+        # obs = 1 if marked_count else 0
+        # S["exp"] = exp
+        # S["obs"] = obs
 
         S["count"] = len(covered) / size
         S["marked_count"] = marked_count
@@ -55,9 +68,10 @@ class FragmentStatistics:
         S["n_mark"] = len(marked)
         S["n_cover"] = len(covered)
         S["n_mark_cover"] = len(covered & marked)
-        S["exp"] = exp
-        S["obs"] = obs
+        S["marked_groups"] = marked_groups
+        S["equivalence_group"] = eq
         S["marked_ids"] = marked_ids
+        S["size"] = len(eq)
 
         self.append_one(frag, **S)
 
@@ -94,7 +108,8 @@ class FragmentStatistics:
         if frag in self._lookup:
             n = self._lookup[frag]
             for k in kwargs:
-                self._stats[k][n] = self._stats[k][n] + kwargs[k]
+                if k not in self.static_stats:
+                    self._stats[k][n] = self._stats[k][n] + kwargs[k]
         else:
             self.append_one(frag, **kwargs)
 
