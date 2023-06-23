@@ -68,6 +68,12 @@ def segment_max(data, segment_ids, n : Optional[int] = None, init = "min"):
 def segment_min(data, segment_ids, n : Optional[int] = None, init = "max"):
     return segment_reduce(np.minimum, data, segment_ids, n, init)
 
+def segment_mean(data, segment_ids, n : Optional[int] = None, init = 0):
+    ss = segment_sum(data, segment_ids, n, init)
+    sn = segment_sum(np.ones_like(data), segment_ids, n, 0)
+    return ss / np.where(sn==0, 1, sn)
+
+
 @njit(cache=True)
 def _morgan(v, e1: numba.uint32[:], e2: numba.uint32[:]) -> numba.uint64[:]:  # type: ignore
     p, u = to_primes(v)
