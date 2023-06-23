@@ -4,6 +4,7 @@ from .serialize import Serialized
 from typing import Callable, Optional, Union, Generator, Sequence, NamedTuple
 from .ops import to_range 
 import networkx as nx
+import numpy as np
 
 Mol = Chem.rdchem.Mol
 Atom = Chem.rdchem.Atom
