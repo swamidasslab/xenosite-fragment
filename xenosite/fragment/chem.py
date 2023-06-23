@@ -172,9 +172,8 @@ class Fragment:
         :rtype: FragmentEquivalence
         """        
 
-        m = self.graph.morgan()
-        i,ni = to_range(m)
-        return FragmentEquivalence(i, ni) #type: ignore
+        o = self.graph._nauty_orbits()
+        return FragmentEquivalence(o, np.max(o)) #type: ignore
 
     def canonical(self, remap=False) -> Serialized:
         """
@@ -297,6 +296,52 @@ def smarts_tanimoto(m1 : Chem.Mol, m2 : Chem.Mol, cutoff : float = 0, allow_disc
     return AnB / (A + B - AnB) 
 
 
+#TODO: implment a version/option of this function uses the edge count instead of just the atoms.
+#TODO: add convenience conversion from Fragment or str to rdkit.Mol
+def smarts_edit_distance(m1 : Chem.Mol, m2 : Chem.Mol, cutoff : float = 10, allow_disconnected : bool = True) -> float: #type: ignore
+    """Vertex edit distance between two SMARTS rdkit mols. Overlap is not mesured using a fingerprint, but 
+    by computing the max-common-structure overlap (in atoms) of the two, so this can be slow.
+
+    For example, these two molecules/SMARTS overlap in 3 out of 4 molecules, yielding an edit of 1. 
+
+    >>> from rdkit import Chem
+    >>> m1 = Chem.MolFromSmarts("CCC")
+    >>> m2 = Chem.MolFromSmarts("CCCC")
+    >>> smarts_edit_distance(m1, m2)
+    1
+
+    These two molecules yield the same edit distance because the SMARTS string allows for either
+    a C or an N in the third position.
+
+    >>> m1 = Chem.MolFromSmarts("CCN")
+    >>> m2 = Chem.MolFromSmarts("CC[C,N]C")
+    >>> smarts_edit_distance(m1, m2)
+    1
+
+    Cutoff is the maximum edit-distance we care about, which can speed computation by avoiding the MCS
+    computation in some cases. When this threshold can't be met, the edit is reported as the cutoff value.
+
+    >>> smarts_edit_distance(m1, m2, cutoff=0.5)
+    0.5
+
+    Note that the function will still report edit distance, if it exists and even if it is above cutoff, when
+    the MSC step is run. In the following case, 3 out of 5 atoms match, but based on size of the framents 
+    alone 4 out of 4 atoms could have matched. So the MCS was run, and the 0.6 similarity was reported even
+    though it was below the cutoff.
+
+    >>> m1 = Chem.MolFromSmarts("OCCN")
+    >>> m2 = Chem.MolFromSmarts("CC[C,N]C")
+    >>> smarts_tanimoto(m1, m2, cutoff=0.5)
+    1
+
+    """
+    A = m1.GetNumAtoms()
+    B = m2.GetNumAtoms()
+    
+    if max(A,B) - min(A,B) > cutoff: return cutoff
+    AnB = _maximum_common_subgraph(m1, m2, allow_disconnected)
+
+    return A + B - 2 * AnB
 
 def _modular_product_graph(m1 : Chem.Mol, m2: Chem.Mol) -> nx.Graph: #type: ignore
     """This function converts two molecules into a modular product graph.
