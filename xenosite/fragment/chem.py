@@ -326,13 +326,13 @@ def smarts_edit_distance(m1 : Chem.Mol, m2 : Chem.Mol, cutoff : float = 10, allo
 
     Note that the function will still report edit distance, if it exists and even if it is above cutoff, when
     the MSC step is run. In the following case, 3 out of 5 atoms match, but based on size of the framents 
-    alone 4 out of 4 atoms could have matched. So the MCS was run, and the 0.6 similarity was reported even
-    though it was below the cutoff.
+    alone 4 out of 4 atoms could have matched. So the MCS was run, and the 2 edit distance was reported even
+    though it was above the cutoff.
 
     >>> m1 = Chem.MolFromSmarts("OCCN")
     >>> m2 = Chem.MolFromSmarts("CC[C,N]C")
-    >>> smarts_tanimoto(m1, m2, cutoff=0.5)
-    1
+    >>> smarts_edit_distance(m1, m2, cutoff=0.5)
+    2
 
     """
     A = m1.GetNumAtoms()
