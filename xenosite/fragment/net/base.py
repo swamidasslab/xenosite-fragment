@@ -52,20 +52,25 @@ class FragmentNetworkBase:
         frag2reordering = defaultdict(lambda: [])
         # frag2ids = defaultdict(lambda: [])
 
+        frag2fragment = {}
+
         for ids in id_network.nodes:
             full_ids = self._remap_ids(ids, id_network)
-
-            serial = Fragment(mol, full_ids).canonical(remap=True)
+            fragment = Fragment(mol, full_ids)
+            serial = fragment.canonical(remap=True)
             frag = serial.string  # type: ignore
             id_network.nodes[ids]["frag"] = frag
 
             frag2reordering[frag].append(serial.reordering)
             # frag2ids[frag].append(ids)
 
+            frag2fragment[frag] = fragment
+
         self._frag2id = frag2reordering
 
         for frag, ids in frag2reordering.items():
-            self.stats.add(frag, ids, marked, mol.n)
+            fragment = frag2fragment[frag]
+            self.stats.add(frag, fragment, ids, marked, mol.n)
             network.add_node(frag)
 
         for u, v in id_network.edges:
