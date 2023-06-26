@@ -86,7 +86,7 @@ class FragmentStatistics:
         S["n_mark"] = len(marked)
         S["n_cover"] = len(covered)
         S["n_mark_cover"] = len(covered & marked)
-        S["marked_groups"] = marked_groups
+        #S["marked_groups"] = marked_groups
         S["equivalence_group"] = eq
         S["marked_ids"] = marked_ids
         S["size"] = size
