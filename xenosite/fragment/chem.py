@@ -173,8 +173,9 @@ class Fragment:
         :rtype: FragmentEquivalence
         """        
 
-        o = self.graph._nauty_orbits()
-        return FragmentEquivalence(o, np.max(o)) #type: ignore
+        o = self.graph.morgan()
+        o = to_range(o)
+        return FragmentEquivalence(*o) #type: ignore
 
     def canonical(self, remap=False) -> Serialized:
         """

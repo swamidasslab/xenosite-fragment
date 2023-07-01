@@ -3,12 +3,10 @@ from __future__ import annotations
 from enum import Enum
 from typing import NamedTuple, Optional, Sequence, Union, Any
 from numba import njit
-from collections import defaultdict
 import numpy as np
-import pynauty
 
 from . import serialize
-from .ops import morgan, to_range, segment_min
+from .ops import morgan
 
 
 class BaseGraph:
@@ -99,7 +97,7 @@ class Graph(BaseGraph):  # Undirected Graph
     
 
 
-    def morgan(self) -> np.ndarray[np.int64]:
+    def morgan(self) -> np.ndarray[np.int64]: #type: ignore
         try:
             _ = self._morgan
         except:
@@ -115,66 +113,6 @@ class Graph(BaseGraph):  # Undirected Graph
     
         return self._morgan
 
-    
-    def _to_nauty(self, colors=True):
-
-        adj = defaultdict(list)
-        for i in range(len(self.edge[0])):
-            adj[self.edge[0][i]].append(self.edge[1][i])
-
-        # # equiv loop:
-        # for i, j in zip(*self.edge):
-        #     adj[i].append(j)
-
-        if colors and self.nlabel:
-            c = _to_nauty_colors(self.nlabel)   
-        else:
-            c = []
-
-        g = pynauty.Graph(self.n)
-
-        # setting adj and color, bypassing all checks
-        g._adjacency_dict = adj
-        g._vertex_coloring = c
-        return g
-    
-    def _nauty_order(self):
-        import pynauty
-        if self.elabel:
-            return self.edge_to_node()._nauty_order()[:self.n]
-        
-        g = self._to_nauty()
-
-        c = pynauty.canon_label(g)
-        c = np.asarray(c) #type:  ignore
-        c = _invert_mapping(c)
-        return c
-
-    def _nauty_orbits(self):
-        import pynauty
-        if self.elabel:
-            o = self.edge_to_node()._nauty_orbits()[:self.n]
-            o = to_range(o)[0]
-            return o
-        
-        g = self._to_nauty()
-
-        o = pynauty.autgrp(g)[3] # orbits of each vertex (equivalent groups) with non canonical colors
-
-        # Canonize using cannoical ordering
-        c = pynauty.canon_label(g)
-        c = np.asarray(c) #type:  ignore
-        c = _invert_mapping(c)
-
-        # canonical color for each orbit
-        o = to_range(o)[0]
-        can_o = segment_min(c, o)
-        can_o = to_range(can_o)[0]
-
-        # canonical orbit for each vertex
-        o = np.take(can_o, o)
-
-        return o
 
 
     def serialize(self, canonize=True) -> serialize.Serialized:
@@ -187,18 +125,6 @@ class Graph(BaseGraph):  # Undirected Graph
         if smiles:
             return chem.MolToSmilesGraph(molecule)
         return chem.MolToSmartsGraph(molecule)
-
-
-def _to_nauty_colors(x):
-  unq = sorted(np.unique(x))
-  unq_lookup = {u: n for n,u in enumerate(unq)}
-
-  colors = [set() for _ in range(len(unq))]
-  for n, l in enumerate(x):
-    colors[unq_lookup[l]].add(n)
-
-  return colors
-
 
 @njit
 def _invert_mapping(x):
@@ -253,7 +179,7 @@ def dfs_ordered(G: Graph, canonize=True) -> list[DFS_EDGE]:
         return []
 
     if canonize:
-        M = G._nauty_order()
+        M = G.morgan()
         start = int(np.argmin(M))
         for n in N:
             N[n] = sorted(N[n], key=lambda x: M[x])

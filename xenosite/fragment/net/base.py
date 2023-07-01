@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class FragmentNetworkBase:
     max_size: int = 10
-    _version: int = 5
+    _version: int = 6
 
     def __init__(
         self,

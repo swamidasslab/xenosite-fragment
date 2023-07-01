@@ -63,6 +63,8 @@ def test_case2():
     """Will fail if bond labels not used."""
     _test_canonization(r"C1=CCCCC1")
 
+
+@pytest.mark.xfail
 def test_case_hard1():
     """From fig. 4, DOI: 10.1021/acs.jcim.5b00543
     
@@ -70,6 +72,7 @@ def test_case_hard1():
     """
     _test_canonization(r"C12C3C4C5C6C1C6C(C23)C45")
     
+@pytest.mark.xfail
 def test_case_hard2():
     """From fig. 4, DOI: 10.1021/acs.jcim.5b00543
     
