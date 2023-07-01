@@ -5,7 +5,7 @@ from typing import Optional, Union, Sequence, Generator
 from ..graph import Graph
 from ..chem import Fragment
 from collections import defaultdict
-from scipy.stats import hypergeom
+
 import gzip
 import pickle
 import networkx as nx
