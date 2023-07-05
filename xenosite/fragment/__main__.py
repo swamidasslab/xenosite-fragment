@@ -121,11 +121,9 @@ def network(
     if filter_unmarked:
 
         logger.info(f"[bold blue]filtering unmarked fragments[/bold blue]")
-        unmarked = [
-            frag
-            for frag in result.network
-            if isinstance(frag, str) and not result.network.nodes[frag]["marked_count"]
-        ]
+
+        P = result.to_pandas()
+        unmarked = list(P[P.marked_count == 0].index)
         result.network.remove_nodes_from(unmarked)
 
         unmarked_ref = [
