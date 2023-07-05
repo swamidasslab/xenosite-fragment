@@ -18,7 +18,7 @@ from xenosite.fragment.chem import MolToSmartsGraph
 logger = logging.getLogger(__name__)
 
 class FragmentNetworkBase:
-    max_size: int = 10
+    max_size: int = 8
     _version: int = 6
 
     def __init__(
@@ -113,23 +113,43 @@ class FragmentNetworkBase:
       self.stats = self.stats.copy_from(other.stats)
       return self
 
-    def molecule_shading(self, mol : str) -> np.ndarray:
-      N = type(self)(mol, max_size=self.max_size) # make
-      frag2ids = N._frag2id
+    def molecule_shading(self,
+      mol : str,
+      beta_prior : float = 0.0,
+      hold_out : bool = False,
+      marked: Optional[set[int]] = None
+    ) -> np.ndarray:
     
-      mol_size = rdkit.Chem.MolFromSmiles(mol).GetNumAtoms() # type: ignore
-      shade = np.zeros(mol_size)
-      for frag in N.network.nodes:
-        if not isinstance(frag, str): continue
-        if frag not in self.stats._lookup: continue
-
-        ids = frag2ids[frag]
-        n = self.stats._lookup[frag]
-        frag_shade = self.stats._stats["marked_ids"][n] / self.stats._stats["n_mol"][n]
-        for match in ids:
-          shade[match] = np.where(shade[match] > frag_shade, shade[match], frag_shade)
+        assert(type(self).version == self.version)
+        N = type(self)(mol, max_size=self.max_size, marked=marked)
         
-      return shade
+        frag2ids = N._frag2id
+
+        rdmol = rdkit.Chem.MolFromSmiles(mol)
+        mol_size = rdmol.GetNumAtoms()
+        shade = np.zeros(mol_size)
+        
+        for frag in N.network.nodes:
+            if not isinstance(frag, str): continue
+            if frag not in self.stats._lookup: continue
+            
+            ids = frag2ids[frag]
+            n = self.stats._lookup[frag]
+            marked_ids = self.stats._stats["marked_ids"][n]
+            n_mol = self.stats._stats["n_mol"][n]
+
+            if hold_out:
+                n = N.stats._lookup[frag]
+                marked_ids = marked_ids - N.stats._stats["marked_ids"][n]
+                n_mol -= 1
+                if not n_mol: continue
+
+            frag_shade = marked_ids / (n_mol + beta_prior)
+
+            for match in ids:
+                shade[match] = np.where(shade[match] > frag_shade, shade[match], frag_shade)
+
+        return shade
 
     # Get fragments of specific molecule with specific atom id
     def fragments_by_id(self, mol : Union[str, "FragmentNetworkBase"], atom_id : Union[int, Sequence[int]] ) -> Generator[tuple[str,np.ndarray], None, None]:
