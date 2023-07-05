@@ -37,7 +37,7 @@ setup(
         ],
         "xenosite_command": ["fragment=xenosite.fragment.__main__:app"],
     },
-    install_requires=["rdkit", "numpy", "numba", "rich", "typer", "networkx", "pandas", "pynauty==2.8.6"],
+    install_requires=["rdkit", "numpy", "numba", "rich", "typer", "networkx", "pandas"],
     classifiers=[
         "Intended Audience :: Education",
         "Intended Audience :: Science/Research",

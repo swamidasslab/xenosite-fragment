@@ -19,7 +19,7 @@ import pandas as pd
 from xenosite.fragment.stats import FragmentStatistics
 
 runtime_env = {
-    "pip": ["numba", "rdkit", "networkx", "rich", "pandas",  "pynauty==2.8.6"],
+    "pip": ["numba", "rdkit", "networkx", "rich", "pandas"],
     "py_modules": ["xenosite"],
     "exclude": ["*.csv", ".git", "*.ipynb", "*.gz", "coverage"],
     "eager_install": True,
