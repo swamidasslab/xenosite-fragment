@@ -1,3 +1,5 @@
+*.pq
+*.pdf
 pytest.ini
 coverage*
 coverage.xml
