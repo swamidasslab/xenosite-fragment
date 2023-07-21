@@ -27,6 +27,7 @@ class FragmentNetworkBase:
         marked: Optional[set[int]] = None,
         max_size: Optional[int] = None,
         include_mol_ref: bool = True,
+        fragment_input: bool = False,
     ):
         self.version: int = self._version
         self.stats = FragmentStatistics()
@@ -38,9 +39,13 @@ class FragmentNetworkBase:
             self.network = nx.DiGraph()
             self.molrefs = nx.DiGraph()
             return
+        
+        if fragment_input:
+            rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmarts(smiles)
+        else:
+            rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmiles(smiles)  # type: ignore
 
-        rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmiles(smiles)  # type: ignore
-        assert rdmol, f"Not a valid SMILES: ${smiles}" 
+        assert rdmol, f"Not a valid SMILES or SMARTS: ${smiles}" 
         self._mol: rdkit.Chem.Mol  = rdmol # type: ignore
 
         mol: Graph = Fragment(rdmol).graph

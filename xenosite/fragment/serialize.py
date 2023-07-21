@@ -17,8 +17,10 @@ class Serialized(typing.NamedTuple):
 def serialize(G: "graph.Graph", canonize=True) -> Serialized:
     if G.nlabel is None:
         raise ValueError("Need node labels.")
+    
     if G.elabel is None:
-        raise ValueError("Need edge labels.")
+        if G.edge[0]:
+          raise ValueError("Need edge labels.")
 
     dfs = graph.dfs_ordered(G, canonize)
 
