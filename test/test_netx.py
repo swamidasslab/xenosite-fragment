@@ -185,7 +185,7 @@ def test_ring_net_ex(
 
 @settings(max_examples=15, deadline=None)
 @given(
-  random_smiles_pair(), 
+  random_smiles_pair(),  #type: ignore
   st.booleans(),
   st.sampled_from([RingFragmentNetworkX, RingFragmentNetworkX]),
 )  # type: ignore
