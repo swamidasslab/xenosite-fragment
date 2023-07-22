@@ -41,7 +41,7 @@ class FragmentNetworkBase:
             return
         
         if fragment_input:
-            rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmarts(smiles)
+            rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmarts(smiles) #type: ignore
         else:
             rdmol: rdkit.Chem.Mol = rdkit.Chem.MolFromSmiles(smiles)  # type: ignore
 
@@ -69,7 +69,7 @@ class FragmentNetworkBase:
             frag2reordering[frag].append(serial.reordering)
             # frag2ids[frag].append(ids)
 
-            frag2fragment[frag] = fragment
+            frag2fragment[frag] = fragment 
 
         self._frag2id = frag2reordering
 
@@ -125,12 +125,12 @@ class FragmentNetworkBase:
       marked: Optional[set[int]] = None
     ) -> np.ndarray:
     
-        assert(type(self).version == self.version)
+        assert(type(self).version == self.version) #type: ignore
         N = type(self)(mol, max_size=self.max_size, marked=marked)
         
         frag2ids = N._frag2id
 
-        rdmol = rdkit.Chem.MolFromSmiles(mol)
+        rdmol = rdkit.Chem.MolFromSmiles(mol) #type: ignore
         mol_size = rdmol.GetNumAtoms()
         shade = np.zeros(mol_size)
         

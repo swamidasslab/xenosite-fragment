@@ -305,16 +305,34 @@ def test_network(smiles_som):
     smiles, som = smiles_som
 
     n = RingFragmentNetworkX(smiles, marked=som)
+
+    # site labels
+    f = Fragment(smiles)
+    assert f.graph.nlabel
+    sl = set([f.graph.nlabel[s] for s in som ])
+
     p = n.to_pandas()
 
     for frag, data in p.iterrows():
-        frag = Fragment(frag)
+        frag = Fragment(frag); assert frag.graph.nlabel
         equiv = data.equivalence_group
         mids = data.marked_ids
 
-        # asseert frag equivalences are consistent
+        # assert frag equivalences are consistent
         assert (frag.equivalence()[0] == equiv).all()
 
-        # asseert marked_ids are equal within equivalence groups 
+        # assert marked_ids are equal within equivalence groups 
         assert (segment_max(mids, equiv)[equiv] == mids).all()
+
+
+        # assert that marked site label in frag are consistent
+        frag_sl = set([
+            frag.graph.nlabel[i] # label of marked sites in frag
+            for i, m in enumerate(mids) 
+            if m   # if marked
+          ])
+        assert not (frag_sl - sl), frag
+
+
+
 

@@ -40,9 +40,8 @@ def _covered(ids, marked, size):
     )
     return covered, marked_count
 
-def _equivalence(fragment):
-    return fragment.equivalence()[0][fragment.serial_canonized.reordering]
-
+def _equivalence(fragment: Fragment):
+    return fragment.equivalence()[0][fragment.serial_canonized.reordering] #type: ignore
 
 class FragmentStatistics:
     # the statistics that are static, not accumulated, in updates
@@ -70,7 +69,6 @@ class FragmentStatistics:
         marked_ids, marked_groups = _marked_ids(ids, eq, marked)
 
         covered, marked_count = _covered(ids, marked, size)
-
 
         # # exp = probability of fragment overlapping with at least one marked atom
         # # given: size of molecule, number of atoms matching fragment, number of marked atoms
