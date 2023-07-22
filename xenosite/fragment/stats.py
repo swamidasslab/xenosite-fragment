@@ -41,7 +41,7 @@ def _covered(ids, marked, size):
     return covered, marked_count
 
 def _equivalence(fragment):
-    return fragment.equivalence()[0]
+    return fragment.equivalence()[0][fragment.serial_canonized.reordering]
 
 
 class FragmentStatistics:
@@ -67,7 +67,7 @@ class FragmentStatistics:
 
         eq = _equivalence(fragment)
         size = len(eq)
-        marked_ids, marked_groups = _marked_ids(ids,eq, marked)
+        marked_ids, marked_groups = _marked_ids(ids, eq, marked)
 
         covered, marked_count = _covered(ids, marked, size)
 

@@ -1,7 +1,8 @@
-from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX
+from xenosite.fragment import FragmentNetworkX, RingFragmentNetworkX, Fragment
 from xenosite.fragment.net import FragmentNetworkBase
+from xenosite.fragment.ops import segment_max
 from hypothesis import strategies as st, given, assume, settings
-from .util import random_smiles_pair, random_smiles
+from .util import random_smiles_pair, random_smiles, random_smiles_som
 import networkx as nx
 import pytest
 import pandas as pd
@@ -298,4 +299,22 @@ def test_add(smiles, include_mol_ref):
 
       assert np.allclose(x, y) # type: ignore
 
-      
+@settings(max_examples=5, deadline=None)
+@given(random_smiles_som())  # type: ignore
+def test_network(smiles_som):
+    smiles, som = smiles_som
+
+    n = RingFragmentNetworkX(smiles, marked=som)
+    p = n.to_pandas()
+
+    for frag, data in p.iterrows():
+        frag = Fragment(frag)
+        equiv = data.equivalence_group
+        mids = data.marked_ids
+
+        # asseert frag equivalences are consistent
+        assert (frag.equivalence()[0] == equiv).all()
+
+        # asseert marked_ids are equal within equivalence groups 
+        assert (segment_max(mids, equiv)[equiv] == mids).all()
+
