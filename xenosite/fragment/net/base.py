@@ -56,6 +56,7 @@ class FragmentNetworkBase:
         id_network = self._subgraph_network_ids(rdmol, mol)
         frag2reordering = defaultdict(lambda: [])
         # frag2ids = defaultdict(lambda: [])
+        frad2depth = {}
 
         frag2fragment = {}
 
@@ -68,14 +69,15 @@ class FragmentNetworkBase:
 
             frag2reordering[frag].append(serial.reordering)
             # frag2ids[frag].append(ids)
-
+            frad2depth[frag] = len(ids)
             frag2fragment[frag] = fragment 
 
         self._frag2id = frag2reordering
 
         for frag, ids in frag2reordering.items():
             fragment = frag2fragment[frag]
-            self.stats.add(frag, fragment, ids, marked, mol.n)
+            depth = frad2depth[frag] 
+            self.stats.add(frag, fragment, ids, marked, mol.n, depth)
             network.add_node(frag)
 
         for u, v in id_network.edges:

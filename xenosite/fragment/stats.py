@@ -45,7 +45,7 @@ def _equivalence(fragment: Fragment):
 
 class FragmentStatistics:
     # the statistics that are static, not accumulated, in updates
-    static_stats = {"size", "equivalence_group", "frag"}
+    static_stats = {"size", "equivalence_group", "frag", "depth"}
 
     def __init__(self):
         self._stats: dict = defaultdict(list)
@@ -57,7 +57,8 @@ class FragmentStatistics:
         fragment: Fragment,
         ids: list[list[int]], 
         marked: set[int], 
-        mol_atoms: int
+        mol_atoms: int,
+        depth: int,
     ) -> None:
         assert frag not in self._lookup
         assert self._stats is not None
@@ -88,6 +89,7 @@ class FragmentStatistics:
         S["equivalence_group"] = eq
         S["marked_ids"] = marked_ids
         S["size"] = size
+        S["depth"] = depth
 
         self.append_one(frag, **S)
 
